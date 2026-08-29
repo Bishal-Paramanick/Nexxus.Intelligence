@@ -239,6 +239,24 @@
       "source_doc": "FIR_103",
       "registration_number": "WB01AB1234",
       "vehicle_type": "silver Honda City"
+    },
+    {
+      "id": "PH007",
+      "type": "Phone",
+      "source_doc": "FIR_103",
+      "number": "9123456780"
+    },
+    {
+      "id": "PH008",
+      "type": "Phone",
+      "source_doc": "FIR_103",
+      "number": "8801234567"
+    },
+    {
+      "id": "PH009",
+      "type": "Phone",
+      "source_doc": "FIR_102",
+      "number": "7896541230"
     }
   ],
   "relationships": [
@@ -261,6 +279,366 @@
       "evidence": "I state that Debasish Chatterjee is known locally to own Chatterjee Textiles, a garment trading business operating out of Howrah.",
       "timestamp": null,
       "role": null
+    },
+    {
+      "source": "PH002",
+      "target": "PH003",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9748123456, 120s, 2026-03-01T10:15:00Z",
+      "timestamp": "2026-03-01T10:15:00Z",
+      "duration": 120
+    },
+    {
+      "source": "PH003",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9748123456 -> 9832145678, 45s, 2026-03-01T18:30:00Z",
+      "timestamp": "2026-03-01T18:30:00Z",
+      "duration": 45
+    },
+    {
+      "source": "PH002",
+      "target": "PH005",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 9832145678 -> 8967234561, 200s, 2026-03-02T09:00:00Z",
+      "timestamp": "2026-03-02T09:00:00Z",
+      "duration": 200
+    },
+    {
+      "source": "PH005",
+      "target": "PH003",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 8967234561 -> 9748123456, 90s, 2026-03-03T14:20:00Z",
+      "timestamp": "2026-03-03T14:20:00Z",
+      "duration": 90
+    },
+    {
+      "source": "PH003",
+      "target": "PH005",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 9748123456 -> 8967234561, 60s, 2026-03-04T11:05:00Z",
+      "timestamp": "2026-03-04T11:05:00Z",
+      "duration": 60
+    },
+    {
+      "source": "PH007",
+      "target": "PH008",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 9123456780 -> 8801234567, 300s, 2026-03-06T10:00:00Z",
+      "timestamp": "2026-03-06T10:00:00Z",
+      "duration": 300
+    },
+    {
+      "source": "PH008",
+      "target": "PH006",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 8801234567 -> 7012345698, 150s, 2026-03-07T15:45:00Z",
+      "timestamp": "2026-03-07T15:45:00Z",
+      "duration": 150
+    },
+    {
+      "source": "PH006",
+      "target": "PH007",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 7012345698 -> 9123456780, 80s, 2026-03-08T09:30:00Z",
+      "timestamp": "2026-03-08T09:30:00Z",
+      "duration": 80
+    },
+    {
+      "source": "PH007",
+      "target": "PH006",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 9123456780 -> 7012345698, 110s, 2026-03-09T17:00:00Z",
+      "timestamp": "2026-03-09T17:00:00Z",
+      "duration": 110
+    },
+    {
+      "source": "PH008",
+      "target": "PH007",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 8801234567 -> 9123456780, 70s, 2026-03-10T12:15:00Z",
+      "timestamp": "2026-03-10T12:15:00Z",
+      "duration": 70
+    },
+    {
+      "source": "PH005",
+      "target": "PH004",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 8967234561 -> 9007123456, 50s, 2026-03-06T11:00:00Z",
+      "timestamp": "2026-03-06T11:00:00Z",
+      "duration": 50
+    },
+    {
+      "source": "PH009",
+      "target": "PH005",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 7896541230 -> 8967234561, 180s, 2026-03-10T08:00:00Z",
+      "timestamp": "2026-03-10T08:00:00Z",
+      "duration": 180
+    },
+    {
+      "source": "PH005",
+      "target": "PH009",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_102",
+      "evidence": "Call record: 8967234561 -> 7896541230, 95s, 2026-03-10T20:10:00Z",
+      "timestamp": "2026-03-10T20:10:00Z",
+      "duration": 95
+    },
+    {
+      "source": "PH009",
+      "target": "PH007",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_103",
+      "evidence": "Call record: 7896541230 -> 9123456780, 130s, 2026-03-20T09:15:00Z",
+      "timestamp": "2026-03-20T09:15:00Z",
+      "duration": 130
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 42s, 2026-03-05T08:01:00Z",
+      "timestamp": "2026-03-05T08:01:00Z",
+      "duration": 42
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 15s, 2026-03-05T08:15:00Z",
+      "timestamp": "2026-03-05T08:15:00Z",
+      "duration": 15
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 55s, 2026-03-05T08:40:00Z",
+      "timestamp": "2026-03-05T08:40:00Z",
+      "duration": 55
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 10s, 2026-03-05T09:05:00Z",
+      "timestamp": "2026-03-05T09:05:00Z",
+      "duration": 10
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 38s, 2026-03-05T09:20:00Z",
+      "timestamp": "2026-03-05T09:20:00Z",
+      "duration": 38
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 22s, 2026-03-05T09:45:00Z",
+      "timestamp": "2026-03-05T09:45:00Z",
+      "duration": 22
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 60s, 2026-03-05T10:10:00Z",
+      "timestamp": "2026-03-05T10:10:00Z",
+      "duration": 60
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 18s, 2026-03-05T10:35:00Z",
+      "timestamp": "2026-03-05T10:35:00Z",
+      "duration": 18
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 45s, 2026-03-05T11:00:00Z",
+      "timestamp": "2026-03-05T11:00:00Z",
+      "duration": 45
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 12s, 2026-03-05T11:20:00Z",
+      "timestamp": "2026-03-05T11:20:00Z",
+      "duration": 12
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 50s, 2026-03-05T11:45:00Z",
+      "timestamp": "2026-03-05T11:45:00Z",
+      "duration": 50
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 20s, 2026-03-05T12:10:00Z",
+      "timestamp": "2026-03-05T12:10:00Z",
+      "duration": 20
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 33s, 2026-03-05T12:35:00Z",
+      "timestamp": "2026-03-05T12:35:00Z",
+      "duration": 33
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 25s, 2026-03-05T13:00:00Z",
+      "timestamp": "2026-03-05T13:00:00Z",
+      "duration": 25
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 48s, 2026-03-05T13:25:00Z",
+      "timestamp": "2026-03-05T13:25:00Z",
+      "duration": 48
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 14s, 2026-03-05T13:50:00Z",
+      "timestamp": "2026-03-05T13:50:00Z",
+      "duration": 14
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 58s, 2026-03-05T14:15:00Z",
+      "timestamp": "2026-03-05T14:15:00Z",
+      "duration": 58
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 19s, 2026-03-05T14:40:00Z",
+      "timestamp": "2026-03-05T14:40:00Z",
+      "duration": 19
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 36s, 2026-03-05T15:05:00Z",
+      "timestamp": "2026-03-05T15:05:00Z",
+      "duration": 36
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 11s, 2026-03-05T15:30:00Z",
+      "timestamp": "2026-03-05T15:30:00Z",
+      "duration": 11
+    },
+    {
+      "source": "PH002",
+      "target": "PH001",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9832145678 -> 9434567123, 44s, 2026-03-05T15:55:00Z",
+      "timestamp": "2026-03-05T15:55:00Z",
+      "duration": 44
+    },
+    {
+      "source": "PH001",
+      "target": "PH002",
+      "type": "CALLED",
+      "confidence": 0.95,
+      "source_doc": "FIR_101",
+      "evidence": "Call record: 9434567123 -> 9832145678, 16s, 2026-03-05T16:20:00Z",
+      "timestamp": "2026-03-05T16:20:00Z",
+      "duration": 16
     }
   ]
 }

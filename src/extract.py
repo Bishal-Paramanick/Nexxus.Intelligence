@@ -8,6 +8,7 @@ Entity extraction from FIR text files
 """
 
 import re
+import os
 import spacy
 from spacy.pipeline import EntityRuler
 
@@ -149,13 +150,6 @@ def deduplicate_entities(all_entities):
     """
     Collapses EXACT (name, type) duplicates into a single entity with a
     unique ID, tracking every doc_id it was mentioned in.
-
-    IMPORTANT: this only catches exact string matches (e.g. "Rajesh Kumar
-    Sharma" appearing 4 times becomes 1 entity). It deliberately does NOT
-    try to match "Rajesh Kumar Sharma" with "R.K. Sharma" — that fuzzy/alias
-    resolution is Ankit's job in the Neo4j entity resolution layer, using
-    Levenshtein/Jaro-Winkler matching. Doing it here would just duplicate
-    that work with a weaker method.
     """
     seen = {}
     type_counters = {}
@@ -173,7 +167,7 @@ def deduplicate_entities(all_entities):
                 "id": entity_id,
                 "name": e["name"],
                 "type": e["type"],
-                "mentioned_in": [e["doc_id"]],  # extra metadata, useful for Ankit
+                "mentioned_in": [e["doc_id"]],
             }
             seen[key] = new_entity
             ordered.append(new_entity)
@@ -186,7 +180,7 @@ def deduplicate_entities(all_entities):
 
 
 # =====================================================================
-# PHASE 3: RELATIONSHIP EXTRACTION
+# RELATIONSHIP EXTRACTION
 # =====================================================================
 # Two sources of relationships:
 #   1. FIR text -> dependency parsing (this section)
@@ -288,12 +282,6 @@ def _find_target(token, expected_prep=None):
     """
     Find the direct object, or the object of a SPECIFIC preposition when
     given (e.g. "for" for MEMBER_OF, "to" for TRANSACTED_WITH).
-
-    This matters because a verb can have MULTIPLE prepositional phrases
-    attached (e.g. "works FOR Shubh Laxmi Finance AS a field agent") --
-    without picking the right one, we'd grab whichever prep happens to
-    come last ("as a... agent") instead of the one that actually names
-    the relationship's target ("for... Finance").
     """
     dobj = next((c for c in token.children if c.dep_ in ("dobj", "attr")), None)
     preps = [c for c in token.children if c.dep_ == "prep"]
@@ -346,9 +334,7 @@ def extract_relationships_from_text(text: str, doc_id: str, entity_id_lookup: di
                     target_name = vehicle_match.group(0)
                 else:
                     # No plate nearby -- check if the direct object resolves
-                    # to an ORG instead, and treat that as MEMBER_OF (the
-                    # closest of the 5 allowed types; there's no
-                    # OWNS_ORGANIZATION type in the contract).
+                    # to an ORG instead, and treat that as MEMBER_OF
                     dobj = next((c for c in token.children if c.dep_ in ("dobj", "attr")), None)
                     if dobj is None:
                         continue
@@ -395,12 +381,134 @@ def build_entity_id_lookup(deduped_entities):
 
 
 # =====================================================================
-# PHASE 4: CONTRACT-COMPLIANT OUTPUT FORMATTING
+# CSV -> ENTITIES + RELATIONSHIPS (CDR calls, bank transfers)
 # =====================================================================
-# Converts our internal entity/relationship format into the exact shape
-# required by DATA_CONTRACT_FOR_PERSON1.md — Title Case types, correct
-# ID prefixes, type-specific required fields, evidence text, and a
-# dangling-reference validator before anything gets written out.
+
+import csv
+from datetime import datetime
+
+
+def _normalize_doc_id(raw_doc_id: str) -> str:
+    """CSV doc_id columns may be lowercase ('fir_101') while FIR text
+    processing uses uppercase ('FIR_101') -- normalize so entities from
+    both sources dedupe together correctly instead of creating dupes."""
+    return raw_doc_id.strip().upper()
+
+
+def _to_iso_timestamp(raw_timestamp: str) -> str:
+    """Converts common timestamp formats to ISO 8601 with trailing Z,
+    as required by the contract (Section 7). Falls back to the raw
+    string, unmodified, if the format isn't recognized -- better to pass
+    through an unexpected format than silently mangle or drop data."""
+    raw_timestamp = raw_timestamp.strip()
+    formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(raw_timestamp, fmt)
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            continue
+    return raw_timestamp  # unrecognized format -- pass through, don't guess
+
+
+def extract_entities_from_cdr(csv_path: str):
+    """Every unique phone number in the CDR file becomes a PHONE entity."""
+    entities = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            doc_id = _normalize_doc_id(row.get("doc_id", "CDR"))
+            for col in ("caller_phone", "receiver_phone"):
+                phone = row.get(col, "").strip()
+                if phone:
+                    entities.append({"name": phone, "type": "PHONE", "doc_id": doc_id})
+    return entities
+
+
+def extract_entities_from_bank(csv_path: str):
+    """Every unique account number in the bank file becomes an ACCOUNT entity."""
+    entities = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            doc_id = _normalize_doc_id(row.get("doc_id", "BANK"))
+            for col in ("sender_acct", "receiver_acct"):
+                acct = row.get(col, "").strip()
+                if acct:
+                    entities.append({"name": acct, "type": "ACCOUNT", "doc_id": doc_id})
+    return entities
+
+
+def extract_relationships_from_cdr(csv_path: str, entity_id_lookup: dict):
+    """
+    Every CDR row -> one CALLED relationship, phone-to-phone.
+    High confidence (0.95) since this is structured data, not inferred
+    from free text.
+    """
+    relationships = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            caller = row.get("caller_phone", "").strip()
+            receiver = row.get("receiver_phone", "").strip()
+            source_id = entity_id_lookup.get(caller)
+            target_id = entity_id_lookup.get(receiver)
+            if not source_id or not target_id:
+                continue
+
+            doc_id = _normalize_doc_id(row.get("doc_id", "CDR"))
+            timestamp = _to_iso_timestamp(row.get("timestamp", ""))
+            duration = row.get("duration_sec", "").strip()
+
+            relationships.append({
+                "source": source_id,
+                "type": "CALLED",
+                "target": target_id,
+                "confidence": 0.95,
+                "doc_id": doc_id,
+                "timestamp": timestamp,
+                "duration": int(duration) if duration.isdigit() else None,
+                "evidence": f"Call record: {caller} -> {receiver}, {duration}s, {timestamp}",
+            })
+    return relationships
+
+
+def extract_relationships_from_bank(csv_path: str, entity_id_lookup: dict):
+    """
+    Every bank transfer row -> one TRANSACTED_WITH relationship,
+    account-to-account.
+    """
+    relationships = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            sender = row.get("sender_acct", "").strip()
+            receiver = row.get("receiver_acct", "").strip()
+            source_id = entity_id_lookup.get(sender)
+            target_id = entity_id_lookup.get(receiver)
+            if not source_id or not target_id:
+                continue
+
+            doc_id = _normalize_doc_id(row.get("doc_id", "BANK"))
+            timestamp = _to_iso_timestamp(row.get("timestamp", ""))
+            amount = row.get("amount", "").strip()
+
+            relationships.append({
+                "source": source_id,
+                "type": "TRANSACTED_WITH",
+                "target": target_id,
+                "confidence": 0.95,
+                "doc_id": doc_id,
+                "timestamp": timestamp,
+                "amount": float(amount) if amount else None,
+                "evidence": f"Bank transfer: {sender} -> {receiver}, Rs.{amount}, {timestamp}",
+            })
+    return relationships
+
+
+# =====================================================================
+# CONTRACT-COMPLIANT OUTPUT FORMATTING
+# =====================================================================
 
 CONTRACT_TYPE_MAP = {
     "PERSON": "Person",
@@ -408,6 +516,7 @@ CONTRACT_TYPE_MAP = {
     "LOCATION": "Location",
     "VEHICLE": "Vehicle",
     "ORG": "Organization",
+    "ACCOUNT": "Account",
 }
 
 CONTRACT_ID_PREFIXES = {
@@ -416,6 +525,7 @@ CONTRACT_ID_PREFIXES = {
     "LOCATION": "LOC",
     "VEHICLE": "VEH",
     "ORG": "ORG",
+    "ACCOUNT": "ACC",
 }
 
 ALLOWED_RELATIONSHIP_TYPES = {
@@ -493,6 +603,8 @@ def build_contract_entities(deduped_entities, doc_texts: dict):
             record["vehicle_type"] = vtype  # best-effort; may be "Unknown"
         elif contract_type == "Organization":
             record["name"] = e["name"]
+        elif contract_type == "Account":
+            record["account_number"] = e["name"]
 
         contract_entities.append(record)
 
@@ -503,7 +615,8 @@ def build_contract_id_lookup(contract_entities):
     """name -> contract id lookup, for wiring relationships to the new IDs."""
     lookup = {}
     for e in contract_entities:
-        name_field = e.get("name") or e.get("number") or e.get("registration_number")
+        name_field = (e.get("name") or e.get("number")
+                      or e.get("registration_number") or e.get("account_number"))
         if name_field:
             lookup[name_field] = e["id"]
     return lookup
@@ -519,7 +632,7 @@ def build_contract_relationships(all_relationships, contract_id_lookup):
     contract_rels = []
     for r in all_relationships:
         if r["type"] not in ALLOWED_RELATIONSHIP_TYPES:
-            continue  # should never happen given our verb map, but be safe
+            continue
 
         rel = {
             "source": r["source"],
@@ -530,22 +643,25 @@ def build_contract_relationships(all_relationships, contract_id_lookup):
             "evidence": r.get("evidence"),
         }
 
-        # Type-specific required fields -- text-derived relationships often
-        # don't state an exact timestamp/duration/amount, so these are
-        # None + flagged rather than guessed.
+        # Type-specific required fields. Use the REAL value if the
+        # relationship already carries one (e.g. CSV-derived CALLED/
+        # TRANSACTED_WITH rows have actual timestamp/duration/amount) --
+        # only fall back to None when it's genuinely unavailable (typical
+        # for text-derived relationships, which don't reliably state an
+        # exact timestamp in FIR prose).
         if r["type"] == "CALLED":
-            rel["timestamp"] = None  # TODO: only reliably available from CDR CSV rows
-            rel["duration"] = None
+            rel["timestamp"] = r.get("timestamp")
+            rel["duration"] = r.get("duration")
         elif r["type"] == "TRANSACTED_WITH":
-            rel["timestamp"] = None  # TODO: only reliably available from bank CSV rows
-            rel["amount"] = None
+            rel["timestamp"] = r.get("timestamp")
+            rel["amount"] = r.get("amount")
         elif r["type"] == "PRESENT_AT":
-            rel["timestamp"] = None
+            rel["timestamp"] = r.get("timestamp")
         elif r["type"] == "OWNS_VEHICLE":
-            rel["timestamp"] = None
+            rel["timestamp"] = r.get("timestamp")
         elif r["type"] == "MEMBER_OF":
-            rel["timestamp"] = None
-            rel["role"] = None  # TODO: not extracted from free text yet
+            rel["timestamp"] = r.get("timestamp")
+            rel["role"] = r.get("role") 
 
         contract_rels.append(rel)
 
@@ -572,7 +688,6 @@ def validate_no_dangling_references(entities, relationships):
 
 
 if __name__ == "__main__":
-    # Update these paths/doc_ids to match your actual files
     files = [
         ("data/raw/fir_101.txt", "FIR_101"),
         ("data/raw/fir_102.txt", "FIR_102"),
@@ -602,9 +717,7 @@ if __name__ == "__main__":
         docs = ", ".join(e["mentioned_in"])
         print(f"  [{e['id']:6}] ({e['type']:8}) {e['name']:30} -- in: {docs}")
 
-    print("\nNow compare this list against your ground_truth.md manually.")
-
-    # --- Phase 3: relationship extraction from FIR text ---
+    # --- relationship extraction from FIR text ---
     entity_id_lookup = build_entity_id_lookup(deduped)
 
     all_relationships = []
@@ -622,7 +735,49 @@ if __name__ == "__main__":
         print(f"  {r['source']} --{r['type']}--> {r['target']}  "
               f"(confidence={r['confidence']}, doc={r['doc_id']})")
 
-    # --- Phase 4: convert to contract-compliant output ---
+    #--CSV entities + relationships (CDR calls, bank transfers) ---
+    csv_files = {
+        "cdr": "data/raw/cdr.csv",
+        "bank": "data/raw/bank_transfers.csv",
+    }
+
+    csv_entities = []
+    if os.path.exists(csv_files["cdr"]):
+        csv_entities.extend(extract_entities_from_cdr(csv_files["cdr"]))
+    # if os.path.exists(csv_files["bank"]):
+    #     csv_entities.extend(extract_entities_from_bank(csv_files["bank"]))
+
+    all_entities = [e for e in all_entities if e["type"] != "ACCOUNT"]
+
+    if csv_entities:
+        print(f"\n--- CSV entities found: {len(csv_entities)} (before merge/dedup) ---")
+        # Re-run dedup across FIR-derived + CSV-derived entities together,
+        # so a phone/account already seen in FIR text merges with its CSV
+        # mention instead of creating a duplicate.
+        all_entities_combined = all_entities + csv_entities
+        deduped = deduplicate_entities(all_entities_combined)
+        entity_id_lookup = build_entity_id_lookup(deduped)
+        print(f"Unique entities after merging CSV data: {len(deduped)}")
+
+    csv_relationships = []
+    if os.path.exists(csv_files["cdr"]):
+        csv_relationships.extend(extract_relationships_from_cdr(csv_files["cdr"], entity_id_lookup))
+    # if os.path.exists(csv_files["bank"]):
+    #     csv_relationships.extend(extract_relationships_from_bank(csv_files["bank"], entity_id_lookup))
+
+    print(f"\n--- Relationships extracted from CSVs: {len(csv_relationships)} ---")
+    for r in csv_relationships[:10]:  # preview first 10, full list goes in the final JSON
+        print(f"  {r['source']} --{r['type']}--> {r['target']}  "
+              f"(confidence={r['confidence']}, doc={r['doc_id']})")
+    if len(csv_relationships) > 10:
+        print(f"  ... and {len(csv_relationships) - 10} more")
+
+    all_relationships = all_relationships + csv_relationships
+
+    print("\n" + "=" * 70)
+    print("=" * 70)
+
+    # --- convert to contract-compliant output ---
     doc_texts = {}
     for filepath, doc_id in files:
         try:
@@ -638,6 +793,7 @@ if __name__ == "__main__":
     # (internal IDs used entity name as the join key, so we look up by name)
     internal_id_to_name = {e["id"]: e["name"] for e in deduped}
     remapped_relationships = []
+    remap_dropped = []
     for r in all_relationships:
         source_name = internal_id_to_name.get(r["source"])
         target_name = internal_id_to_name.get(r["target"])
@@ -645,6 +801,16 @@ if __name__ == "__main__":
         target_contract_id = contract_id_lookup.get(target_name)
         if source_contract_id and target_contract_id:
             remapped_relationships.append({**r, "source": source_contract_id, "target": target_contract_id})
+        else:
+            remap_dropped.append(r)  # never drop silently -- always log it
+
+    if remap_dropped:
+        print(f"\n!!! {len(remap_dropped)} relationships DROPPED during contract ID remap "
+              f"(source/target entity not found in contract export) !!!")
+        for d in remap_dropped[:5]:
+            print(f"  DROPPED: {d['source']} --{d['type']}--> {d['target']} (doc={d.get('doc_id')})")
+        if len(remap_dropped) > 5:
+            print(f"  ... and {len(remap_dropped) - 5} more")
 
     contract_relationships = build_contract_relationships(
         remapped_relationships, contract_id_lookup
