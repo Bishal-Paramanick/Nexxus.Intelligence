@@ -1,0 +1,266 @@
+{
+  "entities": [
+    {
+      "id": "LOC001",
+      "type": "Location",
+      "source_doc": "FIR_101",
+      "name": "Bidhannagar",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "LOC002",
+      "type": "Location",
+      "source_doc": "FIR_101",
+      "name": "Kolkata",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "LOC003",
+      "type": "Location",
+      "source_doc": "FIR_101",
+      "name": "North 24 Parganas",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "P001",
+      "type": "Person",
+      "source_doc": "FIR_101",
+      "name": "Manoj Tiwari",
+      "aliases": []
+    },
+    {
+      "id": "P002",
+      "type": "Person",
+      "source_doc": "FIR_101",
+      "name": "Ram Tiwari",
+      "aliases": []
+    },
+    {
+      "id": "ORG001",
+      "type": "Organization",
+      "source_doc": "FIR_101",
+      "name": "Shubh Laxmi Finance"
+    },
+    {
+      "id": "P003",
+      "type": "Person",
+      "source_doc": "FIR_101",
+      "name": "Rajesh Kumar Sharma",
+      "aliases": []
+    },
+    {
+      "id": "P004",
+      "type": "Person",
+      "source_doc": "FIR_101",
+      "name": "Bimal Das",
+      "aliases": []
+    },
+    {
+      "id": "LOC004",
+      "type": "Location",
+      "source_doc": "FIR_101",
+      "name": "Salt Lake",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "PH001",
+      "type": "Phone",
+      "source_doc": "FIR_101",
+      "number": "9434567123"
+    },
+    {
+      "id": "PH002",
+      "type": "Phone",
+      "source_doc": "FIR_101",
+      "number": "9832145678"
+    },
+    {
+      "id": "PH003",
+      "type": "Phone",
+      "source_doc": "FIR_101",
+      "number": "9748123456"
+    },
+    {
+      "id": "VEH001",
+      "type": "Vehicle",
+      "source_doc": "FIR_101",
+      "registration_number": "WB02CD5678",
+      "vehicle_type": "white Maruti Swift"
+    },
+    {
+      "id": "LOC005",
+      "type": "Location",
+      "source_doc": "FIR_102",
+      "name": "Howrah",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "P005",
+      "type": "Person",
+      "source_doc": "FIR_102",
+      "name": "Debjani Sen",
+      "aliases": []
+    },
+    {
+      "id": "P006",
+      "type": "Person",
+      "source_doc": "FIR_102",
+      "name": "Ashim Sen",
+      "aliases": []
+    },
+    {
+      "id": "LOC006",
+      "type": "Location",
+      "source_doc": "FIR_102",
+      "name": "Shibpur",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "P007",
+      "type": "Person",
+      "source_doc": "FIR_102",
+      "name": "Sunita Roy",
+      "aliases": []
+    },
+    {
+      "id": "LOC007",
+      "type": "Location",
+      "source_doc": "FIR_102",
+      "name": "Howrah Maidan",
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "P008",
+      "type": "Person",
+      "source_doc": "FIR_102",
+      "name": "Debasish Chatterjee",
+      "aliases": []
+    },
+    {
+      "id": "ORG002",
+      "type": "Organization",
+      "source_doc": "FIR_102",
+      "name": "Toyota"
+    },
+    {
+      "id": "ORG003",
+      "type": "Organization",
+      "source_doc": "FIR_102",
+      "name": "Chatterjee Textiles"
+    },
+    {
+      "id": "PH004",
+      "type": "Phone",
+      "source_doc": "FIR_102",
+      "number": "9007123456"
+    },
+    {
+      "id": "PH005",
+      "type": "Phone",
+      "source_doc": "FIR_102",
+      "number": "8967234561"
+    },
+    {
+      "id": "VEH002",
+      "type": "Vehicle",
+      "source_doc": "FIR_102",
+      "registration_number": "WB06EF9012",
+      "vehicle_type": "black Toyota Innova"
+    },
+    {
+      "id": "P009",
+      "type": "Person",
+      "source_doc": "FIR_103",
+      "name": "Anil Kapoor",
+      "aliases": []
+    },
+    {
+      "id": "ORG004",
+      "type": "Organization",
+      "source_doc": "FIR_103",
+      "name": "Kolkata Commercial Bank"
+    },
+    {
+      "id": "P010",
+      "type": "Person",
+      "source_doc": "FIR_103",
+      "name": "Ashok Mehta",
+      "aliases": []
+    },
+    {
+      "id": "ORG005",
+      "type": "Organization",
+      "source_doc": "FIR_103",
+      "name": "Mehta Global Traders"
+    },
+    {
+      "id": "P011",
+      "type": "Person",
+      "source_doc": "FIR_103",
+      "name": "Priya Banerjee",
+      "aliases": []
+    },
+    {
+      "id": "P012",
+      "type": "Person",
+      "source_doc": "FIR_103",
+      "name": "Nikhil Ghosh",
+      "aliases": []
+    },
+    {
+      "id": "P013",
+      "type": "Person",
+      "source_doc": "FIR_103",
+      "name": "R.K. Sharma",
+      "aliases": []
+    },
+    {
+      "id": "ORG006",
+      "type": "Organization",
+      "source_doc": "FIR_103",
+      "name": "Bidhannagar PS"
+    },
+    {
+      "id": "PH006",
+      "type": "Phone",
+      "source_doc": "FIR_103",
+      "number": "7012345698"
+    },
+    {
+      "id": "VEH003",
+      "type": "Vehicle",
+      "source_doc": "FIR_103",
+      "registration_number": "WB01AB1234",
+      "vehicle_type": "silver Honda City"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "P004",
+      "target": "ORG001",
+      "type": "MEMBER_OF",
+      "confidence": 0.85,
+      "source_doc": "FIR_101",
+      "evidence": "I state that Bimal Das works for Shubh Laxmi Finance as a field collection agent in the Salt Lake area.",
+      "timestamp": null,
+      "role": null
+    },
+    {
+      "source": "P008",
+      "target": "ORG003",
+      "type": "MEMBER_OF",
+      "confidence": 0.85,
+      "source_doc": "FIR_102",
+      "evidence": "I state that Debasish Chatterjee is known locally to own Chatterjee Textiles, a garment trading business operating out of Howrah.",
+      "timestamp": null,
+      "role": null
+    }
+  ]
+}
