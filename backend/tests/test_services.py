@@ -34,7 +34,6 @@ def build_synthetic_graph() -> nx.MultiDiGraph:
     G.add_node("PH001", name="+919876543210", type="Phone")
 
     # 1. Circular Transaction Loop: P001 -> P002 -> P003 -> P001
-    base_ts = "2026-08-20T10:00:00Z"
     G.add_edge(
         "P001",
         "P002",
