@@ -1,46 +1,34 @@
-# OS & System Files
-.DS_Store
-Thumbs.db
-*.swp
-*.log
-
-# IDEs & Editors
-.idea/
-.vscode/*
-!.vscode/settings.json
-
+Set-Content -Path ".gitignore" -Value @"
 # Environment & Secrets
 .env
-.env.*
-!.env.example
+.env.local
+*.env
 
-# Python / Virtual Environments / Cache
+# Role-specific local exclusions
+backend/app/database/neo4j_driver.py
+frontend/*
+!frontend/.gitkeep
+cypher/*
+!cypher/.gitkeep
+
+# Python & Backend
 __pycache__/
 *.py[cod]
 *$py.class
-.Python
 venv/
 .venv/
 env/
-*.pkl
-*.h5
 .pytest_cache/
-.coverage
-htmlcov/
 
-# Node / React
+# Node & Frontend
 node_modules/
 dist/
 build/
-.next/
-out/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.eslintcache
+.npm
 
-# Java / Gradle / Maven
-.gradle/
-target/
-*.class
-*.jar
+# IDEs & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+"@
