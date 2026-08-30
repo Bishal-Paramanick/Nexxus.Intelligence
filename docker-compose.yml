@@ -1,0 +1,18 @@
+# Convenience file for running Neo4j locally the same way Person 2 does.
+# Usage: docker compose up -d
+# Then load the seed Cypher script via Neo4j Browser (http://localhost:7474)
+# or `cat seed.cypher | cypher-shell -u neo4j -p password`.
+version: "3.8"
+services:
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"  # Neo4j Browser
+      - "7687:7687"  # Bolt (used by neo4j_loader.py)
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
+
+volumes:
+  neo4j_data:
