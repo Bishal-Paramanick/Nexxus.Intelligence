@@ -3,46 +3,84 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    border-color: rgba(255, 255, 255, 0.08);
+  :root {
+    --bg-main: #060810;
+    --bg-surface: #0b0f19;
+    --bg-card: rgba(15, 22, 36, 0.7);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-highlight: rgba(6, 182, 212, 0.4);
+    --neon-cyan: #00f0ff;
+    --neon-rose: #f43f5e;
+    --neon-amber: #f59e0b;
+    --neon-purple: #a855f7;
+    --neon-emerald: #10b981;
   }
+
   body {
-    background-color: #07090e;
-    color: #f1f5f9;
+    background-color: var(--bg-main);
+    color: #f8fafc;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.012em;
+    overflow-x: hidden;
   }
 }
 
-/* Subtle dot background */
+/* Cybernetic Ambient Grid */
 .cyber-grid {
-  background-size: 24px 24px;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-color: #060810;
 }
 
-/* Modern Clean Glassmorphism Cards */
+/* Glassmorphism Surface Panels */
 .glass-panel {
-  background: rgba(13, 17, 26, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(11, 15, 25, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
 }
 
 .glass-card {
-  background: rgba(18, 24, 38, 0.6);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 22, 36, 0.65);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .glass-card:hover {
-  background: rgba(24, 32, 50, 0.75);
-  border-color: rgba(6, 182, 212, 0.3);
+  background: rgba(20, 30, 48, 0.8);
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.15);
   transform: translateY(-1px);
 }
 
-/* Custom Minimal Scrollbar */
+/* Glow Buttons */
+.btn-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+  color: #040812;
+  font-weight: 600;
+  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.45);
+  transition: all 0.2s ease;
+}
+.btn-cyan:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 28px -2px rgba(6, 182, 212, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-purple {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0 20px -3px rgba(168, 85, 247, 0.4);
+}
+.btn-purple:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 28px -2px rgba(168, 85, 247, 0.6);
+}
+
+/* Minimal Scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -55,41 +93,26 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.5);
+  background: rgba(6, 182, 212, 0.6);
 }
 
-/* Clean Button Glows */
-.btn-glow-cyan {
-  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
-  color: #040812;
-  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.4);
-}
-.btn-glow-cyan:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 0 25px -2px rgba(6, 182, 212, 0.6);
+/* Smooth Fade In Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Risk Badges */
-.badge-critical {
-  background: rgba(244, 63, 94, 0.12);
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  color: #fb7185;
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.badge-high {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
+/* Animated Ring Glow */
+@keyframes haloPulse {
+  0% { transform: scale(0.96); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 0.25; }
+  100% { transform: scale(0.96); opacity: 0.7; }
 }
 
-.badge-moderate {
-  background: rgba(6, 182, 212, 0.12);
-  border: 1px solid rgba(6, 182, 212, 0.4);
-  color: #38bdf8;
-}
-
-.badge-low {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #34d399;
+.halo-pulse {
+  animation: haloPulse 3s infinite ease-in-out;
 }

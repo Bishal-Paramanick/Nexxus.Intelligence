@@ -5,10 +5,9 @@ import {
   Maximize2, 
   Pause, 
   Play, 
-  Eye, 
-  EyeOff, 
   Sparkles,
-  Layers
+  Layers,
+  Crosshair
 } from 'lucide-react';
 
 export default function GraphCanvas({
@@ -44,10 +43,10 @@ export default function GraphCanvas({
 
   // Cluster Center Anchors
   const clusterCenters = {
-    bridge: { x: 0, y: -30, label: 'Mastermind Bridge' },
-    cluster_a: { x: -300, y: 70, label: 'Cluster A: Extortion' },
-    cluster_b: { x: 300, y: 70, label: 'Cluster B: Laundering' },
-    victim: { x: -140, y: 320, label: 'Victims' },
+    bridge: { x: 0, y: -40, label: 'Mastermind Bridge' },
+    cluster_a: { x: -300, y: 80, label: 'Cluster A: Extortion' },
+    cluster_b: { x: 300, y: 80, label: 'Cluster B: Laundering' },
+    victim: { x: -140, y: 330, label: 'Victims & Witnesses' },
   };
 
   // Sync Physical Nodes from Props
@@ -58,9 +57,9 @@ export default function GraphCanvas({
       const existing = existingMap.get(node.id);
       const clusterCenter = clusterCenters[node.cluster_id] || { x: 0, y: 0 };
       
-      const baseRadius = node.type === 'Person' ? 20 : node.type === 'Organization' ? 18 : 15;
-      const riskBonus = (node.risk_score || 0) * 0.1;
-      const centralityBonus = (node.betweenness_centrality || 0) * 12;
+      const baseRadius = node.type === 'Person' ? 22 : node.type === 'Organization' ? 20 : 17;
+      const riskBonus = (node.risk_score || 0) * 0.12;
+      const centralityBonus = (node.betweenness_centrality || 0) * 14;
       const radius = baseRadius + riskBonus + centralityBonus;
 
       const angle = (i / Math.max(nodes.length, 1)) * 2 * Math.PI;
@@ -71,16 +70,16 @@ export default function GraphCanvas({
 
       // Clean Modern Colors
       let color = '#10b981'; // Emerald Low
-      let glowColor = 'rgba(16, 185, 129, 0.3)';
+      let glowColor = 'rgba(16, 185, 129, 0.4)';
       if (node.risk_score >= 85) {
         color = '#f43f5e'; // Rose Critical
-        glowColor = 'rgba(244, 63, 94, 0.5)';
+        glowColor = 'rgba(244, 63, 94, 0.6)';
       } else if (node.risk_score >= 70) {
         color = '#f59e0b'; // Amber High
-        glowColor = 'rgba(245, 158, 11, 0.4)';
+        glowColor = 'rgba(245, 158, 11, 0.5)';
       } else if (node.risk_score >= 40) {
         color = '#06b6d4'; // Cyan Moderate
-        glowColor = 'rgba(6, 182, 212, 0.35)';
+        glowColor = 'rgba(6, 182, 212, 0.4)';
       }
 
       return {
@@ -117,7 +116,7 @@ export default function GraphCanvas({
         } else {
           const isClusterA = node.cluster_id === 'cluster_a';
           const isClusterB = node.cluster_id === 'cluster_b';
-          const radius = node.type === 'Person' ? 200 : 330;
+          const radius = node.type === 'Person' ? 220 : 350;
           const offsetAngle = isClusterA ? -Math.PI * 0.65 : isClusterB ? -Math.PI * 0.35 : Math.PI * 0.5;
           const jitter = (Math.random() - 0.5) * 1.0;
           node.x = Math.cos(offsetAngle + jitter) * radius;
@@ -130,7 +129,7 @@ export default function GraphCanvas({
       simNodes.forEach((node, i) => {
         const center = clusterCenters[node.cluster_id] || { x: 0, y: 0 };
         const angle = (i * 1.37) % (2 * Math.PI);
-        const dist = 35 + (i % 4) * 30;
+        const dist = 35 + (i % 4) * 35;
         node.x = center.x + Math.cos(angle) * dist;
         node.y = center.y + Math.sin(angle) * dist;
         node.vx = 0;
@@ -160,10 +159,10 @@ export default function GraphCanvas({
           const dy = n2.y - n1.y;
           const distSq = dx * dx + dy * dy || 1;
           const dist = Math.sqrt(distSq);
-          const minDist = n1.radius + n2.radius + 30;
+          const minDist = n1.radius + n2.radius + 35;
 
-          if (dist < 400) {
-            const force = (minDist * minDist * 3.8) / distSq;
+          if (dist < 420) {
+            const force = (minDist * minDist * 4.0) / distSq;
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
             if (n1.id !== draggingNodeId) {
@@ -187,7 +186,7 @@ export default function GraphCanvas({
           const dx = target.x - source.x;
           const dy = target.y - source.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const targetDist = edge.is_anomaly ? 120 : 160;
+          const targetDist = edge.is_anomaly ? 130 : 170;
           const springForce = (dist - targetDist) * 0.015;
           const fx = (dx / dist) * springForce;
           const fy = (dy / dist) * springForce;
@@ -240,32 +239,32 @@ export default function GraphCanvas({
       ctx.translate(pan.x, pan.y);
       ctx.scale(zoom, zoom);
 
-      // 1. Subtle Cluster Zones
+      // 1. Subtle Cluster Backdrop
       Object.entries(clusterCenters).forEach(([clusterId, center]) => {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(center.x, center.y, 150, 0, Math.PI * 2);
-        const grad = ctx.createRadialGradient(center.x, center.y, 20, center.x, center.y, 150);
+        ctx.arc(center.x, center.y, 160, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(center.x, center.y, 20, center.x, center.y, 160);
         if (clusterId === 'bridge') {
-          grad.addColorStop(0, 'rgba(168, 85, 247, 0.06)');
+          grad.addColorStop(0, 'rgba(168, 85, 247, 0.08)');
           grad.addColorStop(1, 'rgba(168, 85, 247, 0)');
         } else if (clusterId === 'cluster_a') {
-          grad.addColorStop(0, 'rgba(244, 63, 94, 0.05)');
+          grad.addColorStop(0, 'rgba(244, 63, 94, 0.06)');
           grad.addColorStop(1, 'rgba(244, 63, 94, 0)');
         } else if (clusterId === 'cluster_b') {
-          grad.addColorStop(0, 'rgba(245, 158, 11, 0.05)');
+          grad.addColorStop(0, 'rgba(245, 158, 11, 0.06)');
           grad.addColorStop(1, 'rgba(245, 158, 11, 0)');
         } else {
-          grad.addColorStop(0, 'rgba(16, 185, 129, 0.04)');
+          grad.addColorStop(0, 'rgba(16, 185, 129, 0.05)');
           grad.addColorStop(1, 'rgba(16, 185, 129, 0)');
         }
         ctx.fillStyle = grad;
         ctx.fill();
 
-        ctx.font = '10px Inter, sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.font = '500 11px Inter, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         ctx.textAlign = 'center';
-        ctx.fillText(center.label.toUpperCase(), center.x, center.y - 130);
+        ctx.fillText(center.label.toUpperCase(), center.x, center.y - 135);
         ctx.restore();
       });
 
@@ -292,50 +291,58 @@ export default function GraphCanvas({
 
         if (edge.is_anomaly || edge.sub_type === 'CALL_SPIKE_ANOMALY') {
           ctx.strokeStyle = '#f43f5e';
-          ctx.lineWidth = isEdgeHighlighted ? 3.5 : 2.5;
-          ctx.shadowColor = 'rgba(244, 63, 94, 0.6)';
-          ctx.shadowBlur = 8;
+          ctx.lineWidth = isEdgeHighlighted ? 4 : 2.5;
+          ctx.shadowColor = 'rgba(244, 63, 94, 0.7)';
+          ctx.shadowBlur = 10;
           ctx.stroke();
 
-          // Pulse Dot
+          // Animated energy pulse
           const progress = (pulseOffsetRef.current * 0.8) % 1;
           const px = source.x + (target.x - source.x) * progress;
           const py = source.y + (target.y - source.y) * progress;
           ctx.beginPath();
-          ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
           ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#f43f5e';
+          ctx.shadowBlur = 8;
           ctx.fill();
 
         } else if (edge.anomaly_type?.includes('CIRCULAR') || edge.is_circular) {
           ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = isEdgeHighlighted ? 3.5 : 2;
-          ctx.shadowColor = 'rgba(245, 158, 11, 0.5)';
-          ctx.shadowBlur = 8;
+          ctx.lineWidth = isEdgeHighlighted ? 3.5 : 2.2;
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+          ctx.shadowBlur = 10;
           ctx.stroke();
 
           const progress = (pulseOffsetRef.current * 0.5) % 1;
           const px = source.x + (target.x - source.x) * progress;
           const py = source.y + (target.y - source.y) * progress;
           ctx.beginPath();
-          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.arc(px, py, 3.5, 0, Math.PI * 2);
           ctx.fillStyle = '#fef08a';
           ctx.fill();
 
         } else if (edge.is_bridge) {
           ctx.strokeStyle = '#a855f7';
-          ctx.lineWidth = isEdgeHighlighted ? 3 : 1.8;
+          ctx.lineWidth = isEdgeHighlighted ? 3.5 : 2;
+          ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
+          ctx.shadowBlur = 8;
           ctx.stroke();
         } else {
           ctx.strokeStyle = isEdgeHighlighted ? '#00f0ff' : 'rgba(255, 255, 255, 0.12)';
-          ctx.lineWidth = isEdgeHighlighted ? 2 : 1;
+          ctx.lineWidth = isEdgeHighlighted ? 2.5 : 1.2;
+          if (isEdgeHighlighted) {
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 8;
+          }
           ctx.stroke();
         }
 
-        // Clean subtle tag
-        if ((zoom > 1.05 || isEdgeHighlighted) && (edge.amount || edge.frequency)) {
+        // Clean amount / call count tag
+        if ((zoom > 1.0 || isEdgeHighlighted) && (edge.amount || edge.frequency)) {
           const midX = (source.x + target.x) / 2;
           const midY = (source.y + target.y) / 2;
-          ctx.font = '9px JetBrains Mono, monospace';
+          ctx.font = 'bold 9px JetBrains Mono, monospace';
           ctx.fillStyle = edge.is_anomaly ? '#fca5a5' : edge.amount ? '#fde047' : '#94a3b8';
           ctx.textAlign = 'center';
           const tag = edge.amount ? `₹${(edge.amount).toLocaleString('en-IN')}` : `${edge.frequency} calls`;
@@ -345,45 +352,54 @@ export default function GraphCanvas({
         ctx.restore();
       });
 
-      // 3. Draw Nodes (Clean modern aesthetics)
+      // 3. Draw Nodes
       simNodes.forEach((node) => {
         const isSelected = selectedNode?.id === node.id;
         const isHighlighted = highlightedNodeIds.includes(node.id) || isSelected;
         const isDimmed = hasHighlights && !isHighlighted;
 
         ctx.save();
-        ctx.globalAlpha = isDimmed ? 0.18 : 1;
+        ctx.globalAlpha = isDimmed ? 0.16 : 1;
 
-        // Subtle Glow for Kingpin or Critical Risk
+        // Glowing Pulsing Halo
         if (node.isKingpin || node.risk_score >= 85 || isSelected) {
           ctx.beginPath();
-          const haloRadius = node.radius + (node.isKingpin ? 8 + pulseVal * 2 : 5 + pulseVal * 1.5);
+          const haloRadius = node.radius + (node.isKingpin ? 9 + pulseVal * 2.5 : 6 + pulseVal * 2);
           ctx.arc(node.x, node.y, haloRadius, 0, Math.PI * 2);
-          ctx.fillStyle = node.isKingpin ? 'rgba(168, 85, 247, 0.2)' : node.glowColor;
+          ctx.fillStyle = node.isKingpin ? 'rgba(168, 85, 247, 0.22)' : node.glowColor;
           ctx.fill();
+
+          // Outer dashed ring
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, haloRadius + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = node.isKingpin ? 'rgba(168, 85, 247, 0.6)' : node.color;
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([3, 3]);
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
 
         // Base Node Circle
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#0f1422';
+        ctx.fillStyle = '#0a0e1a';
         ctx.fill();
 
-        // Node Border & Inner Color Fill
-        ctx.lineWidth = isSelected ? 3 : node.isKingpin ? 2.5 : 1.8;
-        ctx.strokeStyle = isSelected ? '#ffffff' : node.color;
-        if (isSelected) {
-          ctx.shadowColor = '#00f0ff';
-          ctx.shadowBlur = 12;
-        }
-        ctx.stroke();
-
-        // Inner soft radial fill
-        const innerGrad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius);
-        innerGrad.addColorStop(0, node.color + '40');
-        innerGrad.addColorStop(1, '#0f1422');
+        // Inner Radial Glow
+        const innerGrad = ctx.createRadialGradient(node.x - 3, node.y - 3, 2, node.x, node.y, node.radius);
+        innerGrad.addColorStop(0, node.color + '55');
+        innerGrad.addColorStop(1, '#0a0e1a');
         ctx.fillStyle = innerGrad;
         ctx.fill();
+
+        // Node Border
+        ctx.lineWidth = isSelected ? 3.2 : node.isKingpin ? 2.8 : 1.8;
+        ctx.strokeStyle = isSelected ? '#ffffff' : node.color;
+        if (isSelected || node.isKingpin) {
+          ctx.shadowColor = node.color;
+          ctx.shadowBlur = 14;
+        }
+        ctx.stroke();
 
         // Icon Glyph
         ctx.font = `${Math.round(node.radius * 0.85)}px system-ui`;
@@ -397,39 +413,46 @@ export default function GraphCanvas({
         if (node.isKingpin) glyph = '👑';
         ctx.fillText(glyph, node.x, node.y);
 
-        // Small Risk Badge
+        // Risk Score Badge
         if (node.risk_score !== undefined && node.risk_score > 0) {
-          const badgeX = node.x + node.radius * 0.7;
-          const badgeY = node.y - node.radius * 0.7;
+          const badgeX = node.x + node.radius * 0.72;
+          const badgeY = node.y - node.radius * 0.72;
           ctx.beginPath();
-          ctx.arc(badgeX, badgeY, 8, 0, Math.PI * 2);
+          ctx.arc(badgeX, badgeY, 8.5, 0, Math.PI * 2);
           ctx.fillStyle = node.color;
           ctx.fill();
-          ctx.strokeStyle = '#07090e';
+          ctx.strokeStyle = '#060810';
           ctx.lineWidth = 1.5;
           ctx.stroke();
 
-          ctx.font = 'bold 7.5px JetBrains Mono, monospace';
-          ctx.fillStyle = '#07090e';
+          ctx.font = 'bold 8px JetBrains Mono, monospace';
+          ctx.fillStyle = '#060810';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(`${node.risk_score}`, badgeX, badgeY);
         }
 
-        // Clean Modern Label
+        // Clean Modern Name Label with subtle pill background
         if (showLabels || isSelected || isHighlighted) {
-          ctx.font = `${node.isKingpin ? '600 11px' : '500 10.5px'} Inter, sans-serif`;
+          const displayName = node.name.length > 22 ? node.name.substring(0, 20) + '...' : node.name;
+          ctx.font = `${node.isKingpin ? '600 11.5px' : '500 11px'} Inter, sans-serif`;
+          
+          const textY = node.y + node.radius + 6;
+          const textWidth = ctx.measureText(displayName).width;
+
+          // Background pill
+          ctx.fillStyle = 'rgba(6, 8, 16, 0.85)';
+          ctx.fillRect(node.x - textWidth / 2 - 4, textY - 2, textWidth + 8, 16);
+
           ctx.fillStyle = isSelected ? '#38bdf8' : node.isKingpin ? '#e9d5ff' : '#f8fafc';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
-          
-          const displayName = node.name.length > 22 ? node.name.substring(0, 20) + '...' : node.name;
-          ctx.fillText(displayName, node.x, node.y + node.radius + 5);
+          ctx.fillText(displayName, node.x, textY);
 
           if (node.role && (zoom > 0.9 || isSelected || node.isKingpin)) {
-            ctx.font = '9px Inter, sans-serif';
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(node.role, node.x, node.y + node.radius + 18);
+            ctx.font = '9.5px Inter, sans-serif';
+            ctx.fillStyle = node.isKingpin ? '#c084fc' : '#94a3b8';
+            ctx.fillText(node.role, node.x, textY + 16);
           }
         }
 
@@ -466,7 +489,7 @@ export default function GraphCanvas({
     const clickedNode = [...simNodesRef.current].reverse().find((node) => {
       const dx = node.x - worldPos.x;
       const dy = node.y - worldPos.y;
-      return Math.sqrt(dx * dx + dy * dy) <= node.radius + 4;
+      return Math.sqrt(dx * dx + dy * dy) <= node.radius + 5;
     });
 
     if (clickedNode) {
@@ -502,7 +525,7 @@ export default function GraphCanvas({
       const hovered = simNodesRef.current.find((node) => {
         const dx = node.x - worldPos.x;
         const dy = node.y - worldPos.y;
-        return Math.sqrt(dx * dx + dy * dy) <= node.radius + 4;
+        return Math.sqrt(dx * dx + dy * dy) <= node.radius + 5;
       });
       setHoveredNode(hovered || null);
     }
@@ -539,7 +562,7 @@ export default function GraphCanvas({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full min-h-[620px] bg-[#07090e] cyber-grid overflow-hidden select-none">
+    <div ref={containerRef} className="relative w-full h-full min-h-[620px] bg-[#060810] cyber-grid overflow-hidden select-none">
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}
@@ -550,25 +573,25 @@ export default function GraphCanvas({
         className="w-full h-full cursor-grab active:cursor-grabbing block"
       />
 
-      {/* Sleek Minimal Floating Controls */}
-      <div className="absolute top-4 left-4 flex items-center space-x-1 p-1 bg-[#0f1422]/90 backdrop-blur-xl rounded-xl border border-white/[0.08] shadow-lg z-20">
+      {/* Sleek Floating Controls */}
+      <div className="absolute top-4 left-4 flex items-center space-x-1 p-1 bg-[#0b101c]/90 backdrop-blur-2xl rounded-2xl border border-white/[0.08] shadow-2xl z-20">
         <button
           onClick={() => setZoom((z) => Math.min(z * 1.2, 3.0))}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors"
+          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors"
           title="Zoom In"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(z * 0.8, 0.4))}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors"
+          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors"
           title="Zoom Out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <button
           onClick={resetView}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors"
+          className="p-1.5 text-slate-300 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors"
           title="Center View"
         >
           <Maximize2 className="w-4 h-4" />
@@ -578,10 +601,10 @@ export default function GraphCanvas({
 
         <button
           onClick={() => setPhysicsRunning(!physicsRunning)}
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-xl transition-colors ${
             physicsRunning
               ? 'text-cyan-400 hover:bg-white/[0.08]'
-              : 'text-amber-400 bg-amber-500/10'
+              : 'text-amber-400 bg-amber-500/15'
           }`}
           title={physicsRunning ? 'Pause Physics' : 'Resume Physics'}
         >
@@ -597,7 +620,7 @@ export default function GraphCanvas({
               applyLayout('force');
               onLayoutChange?.('force');
             }}
-            className="px-2 py-1 text-[11px] rounded-md text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+            className="px-2.5 py-1 text-[11px] rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors font-medium"
           >
             Force
           </button>
@@ -606,7 +629,7 @@ export default function GraphCanvas({
               applyLayout('cluster');
               onLayoutChange?.('cluster');
             }}
-            className="px-2 py-1 text-[11px] rounded-md text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+            className="px-2.5 py-1 text-[11px] rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors font-medium"
           >
             Cluster
           </button>
@@ -615,7 +638,7 @@ export default function GraphCanvas({
               applyLayout('radial');
               onLayoutChange?.('radial');
             }}
-            className="px-2 py-1 text-[11px] rounded-md text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+            className="px-2.5 py-1 text-[11px] rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors font-medium"
           >
             Radial
           </button>
@@ -625,10 +648,10 @@ export default function GraphCanvas({
       {/* Floating Hover Tooltip */}
       {hoveredNode && !isDraggingCanvas && !draggingNodeId && (
         <div 
-          className="absolute pointer-events-none bg-[#0f1422]/95 border border-cyan-500/40 rounded-xl p-3 shadow-2xl z-30 max-w-xs transition-opacity"
+          className="absolute pointer-events-none bg-[#0c101d]/95 border border-cyan-500/40 rounded-2xl p-3.5 shadow-2xl z-30 max-w-xs transition-opacity animate-fade-in backdrop-blur-2xl"
           style={{
-            left: `${hoveredNode.x * zoom + pan.x + 16}px`,
-            top: `${hoveredNode.y * zoom + pan.y - 16}px`,
+            left: `${hoveredNode.x * zoom + pan.x + 18}px`,
+            top: `${hoveredNode.y * zoom + pan.y - 18}px`,
           }}
         >
           <div className="flex items-center justify-between space-x-2 mb-1">
@@ -650,16 +673,16 @@ export default function GraphCanvas({
         </div>
       )}
 
-      {/* Clean Minimal Legend in Bottom-Left */}
+      {/* Floating Modern Legend */}
       <div className="absolute bottom-4 left-4 z-20 hidden md:block">
-        <div className="bg-[#0f1422]/80 backdrop-blur-md border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-slate-300 flex items-center space-x-3">
+        <div className="bg-[#0b101c]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl px-3.5 py-2 text-xs text-slate-300 flex items-center space-x-3.5 shadow-xl">
           <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <span className="text-[11px]">Critical (&gt;85)</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-glow-rose"></span>
+            <span className="text-[11px]">Critical Risk (&gt;85)</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            <span className="text-[11px]">High (70-84)</span>
+            <span className="text-[11px]">High Risk (70-84)</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
