@@ -1,56 +1,83 @@
-Nexxus Intelligence — Central Graph Backend & Multi-Agent Engine
-High-performance, graph-native intelligence platform designed to ingest multi-source legal and investigative records (FIRs, CDRs, banking records), perform dynamic forensic graph analytics, execute agentic queries via LangGraph, and expose real-time intelligence to frontend Cytoscape visualization canvases.
+<div align="center">
 
-👨‍💻 My Role & Contributions: Lead Backend & Multi-Agent Architect
-As the Backend & Multi-Agent Systems Engineer, I designed, implemented, and consolidated the core operational backbone connecting raw NLP extraction, graph data modeling, forensic graph analytics, multi-agent AI orchestration, and frontend REST APIs.
+# ⚡ Nexxus Intelligence
+### Central Graph Backend & Multi-Agent Engine
 
-Core Architectural Accomplishments
-Multi-Agent Orchestration (LangGraph & LangChain):
+*A high-performance, graph-native intelligence platform engineered to ingest multi-source legal records (FIRs, CDRs, banking transactions), perform dynamic forensic graph analytics, execute agentic queries via LangGraph, and feed real-time graph intelligence to Cytoscape.js interfaces.*
 
-Engineered a compiled StateGraph workflow featuring specialized nodes: query_agent_node (intent classification & entity resolution), tool_execution_node (dynamic tool routing), and synthesis_node (forensic reporting).
+---
 
-Built 4 LangChain tools (lookup_suspect_tool, get_subgraph_tool, get_evidence_trail_tool, get_risk_breakdown_tool) interfacing directly with graph queries and analytical scoring.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](#)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)](#)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph%20%2F%20LangChain-FF6F00)](#)
+[![NetworkX](https://img.shields.io/badge/Graph%20Engine-NetworkX-blueviolet)](#)
+[![Neo4j Ready](https://img.shields.io/badge/Storage-Neo4j%20Dual--Mode-008CC1?logo=neo4j&logoColor=white)](#)
+[![Tests](https://img.shields.io/badge/Tests-23%2F23%20Passing-brightgreen?logo=pytest&logoColor=white)](#)
 
-Implemented token-level fuzzy and substring entity matching, allowing natural language queries with multi-word names to resolve target nodes.
+</div>
 
-Integrated automated Section 65B (Indian Evidence Act / BSA) legal evidence summarization and automated Cypher query synthesis.
+---
 
-NLP Ingestion Pipeline & Schema Adaptation (Person 1 - Hand-off):
+## 👨‍💻 My Role & Contributions
+### Lead Backend & Multi-Agent Architect
 
-Adapted schemas and loaders to process multi-format entity extractions (Person, Phone, Location, Vehicle, Organization, and Account).
+> As the **Lead Backend & Multi-Agent Systems Engineer**, I designed and built the operational core connecting upstream NLP extraction, graph analytics, multi-agent AI orchestration, and frontend REST APIs.
 
-Implemented bidirectional document provenance normalization across source_doc and doc_id to eliminate ingestion validation errors.
+---
 
-Mapped flat extraction payloads to typed Pydantic models with automated fallback label resolution for UI canvases.
+### 🌟 Core Architectural Accomplishments
 
-Graph Analytics & Forensic Risk Engine Integration (Person 3  Hand-off):
+#### 1. Multi-Agent Orchestration (`LangGraph` & `LangChain`)
+* **Compiled StateGraph Workflow:** Engineered a multi-agent state machine comprising:
+  * `query_agent_node`: Intent classification and fuzzy token-level entity resolution.
+  * `tool_execution_node`: Dynamic routing to analytical tools based on query intent.
+  * `synthesis_node`: Legal evidence synthesis under Section 65B standards.
+* **Specialized Agent Tools:** Built 4 production-grade LangChain `@tool` wrappers:
+  * `lookup_suspect_tool` — Rapid profile retrieval and metadata extraction.
+  * `get_subgraph_tool` — Dynamic ego-network subgraph slicing.
+  * `get_evidence_trail_tool` — Court-admissible provenance audit trail gathering.
+  * `get_risk_breakdown_tool` — Suspect risk factor computation and anomaly detection.
+* **Resilient Entity Matching:** Built token-level regex resolvers capable of mapping ambiguous multi-word suspect queries (e.g., `"Rahul"`) to target entities (`"Rahul Sharma"`).
+* **Section 65B Compliance:** Automated natural language lead generation citing FIR case IDs, call record timestamps, and verified text spans.
 
-Integrated multi-layered graph algorithms in NetworkX: Louvain modularity clustering, PageRank, Degree Centrality, and Betweenness Centrality.
+---
 
-Implemented anomaly detection algorithms for circular transaction loops (money laundering patterns) and call burst spikes.
+#### 2. Ingestion Adaptation & Normalization *(Person 1 Hand-off)*
+* **Entity Support:** Adapted loaders and Pydantic schemas to parse all 6 canonical entity types: `Person`, `Phone`, `Location`, `Vehicle`, `Organization`, and `Account`.
+* **Bidirectional Key Normalization:** Normalized `source_doc` $\leftrightarrow$ `doc_id` across models to eliminate 422 schema crashes.
+* **Dynamic Property Resolution:** Formatted flat entity payloads (`registration_number`, `account_number`, `number`) with fallback label resolution for canvas rendering.
 
-Coupled graph metrics with dynamic behavioral tagging (Kingpin, Mule, Bridge Node) and time-decay recency weighting.
+---
 
-Frontend REST API Gateway Integration:
+#### 3. Forensic Analytics & Anomaly Detection *(Person 3 Hand-off)*
+* **Network Algorithms:** Integrated Louvain modularity community detection, PageRank, Degree Centrality, and Betweenness Centrality on dynamic `NetworkX` graphs.
+* **Financial Crime Detection:** Implemented cycle-detection algorithms to catch circular transaction loops (money laundering patterns).
+* **Behavioral Tagging:** Implemented dynamic threshold scoring assigning roles such as `Kingpin`, `Mule`, and `Bridge Node`.
 
-Structured and exposed 5 core REST endpoints via FastAPI with CORS integration for Vite/React:
+---
 
-GET /api/graph: Returns nodes, edges, clusters, and normalized risk scores for Cytoscape.js canvas rendering.
+#### 4. Frontend REST Gateway (`FastAPI`)
+* **UI Integration:** Configured CORS middleware for local Vite/React development (`http://localhost:5173`).
+* **5 Core Contracts:**
+  | Endpoint | Method | Purpose / Frontend Destination |
+  | :--- | :---: | :--- |
+  | `/api/graph` | `GET` | Cytoscape.js canvas rendering with clusters & risk scores |
+  | `/api/entity/{id}` | `GET` | Suspect card drawer with factor breakdowns & tags |
+  | `/api/entity/{id}/evidence` | `GET` | Slide-out legal evidence drawer with Section 65B excerpts |
+  | `/api/agent/query` | `POST` | AI copilot endpoint with response & highlighted node IDs |
+  | `/api/ingest` | `POST` | Batch ingestion endpoint for raw extracted payloads |
 
-GET /api/entity/{id}: Deep-dive suspect intelligence, assigned role tags, and granular risk factor breakdowns.
+---
 
-GET /api/entity/{id}/evidence: Audit trail returning court-admissible source citations and excerpts.
+#### 5. Dual-Mode Storage Engine *(Person 2 Hand-off)*
+* **Zero-Crash Resilience:** Implemented non-blocking socket checks (`verify_connectivity`) in ingestion and query routes, avoiding connection drops during testing when external databases are offline.
+* **Drop-in Neo4j Activation:** Architecture defaults to an in-memory/JSON store for testing, with instant live database activation via `DATA_SOURCE = "neo4j"`.
 
-POST /api/agent/query: AI investigator interface returning synthesized reports and highlighted node IDs for canvas viewport focus.
+---
 
-POST /api/ingest: Batch ingestion gateway supporting automated database sync and offline validation.
+#### 6. End-to-End Test Suite
+* Built a master test suite (`backend/tests/test_master_pipeline.py`) validating extraction ingestion, risk algorithms, tools, LangGraph state flows, and REST endpoints.
+* **Result:** **23 / 23 tests passing (100% pass rate)**.
 
-Dual-Mode Hybrid Storage & Fault Tolerance (Person 2 - Hand-off):
+---
 
-Engineered an adaptive data layer that operates smoothly in in-memory NetworkX/JSON mode for offline testing and local development, while maintaining seamless compatibility with a live Neo4j database instance.
-
-Implemented non-blocking socket checks (verify_connectivity) in ingestion routes to prevent runtime crashes when external databases are provisioning.
-
-Comprehensive Quality Assurance:
-
-Authored a 23-test granular test suite (backend/tests/test_master_pipeline.py) validating the entire pipeline end-to-end with 100% test pass rates.
