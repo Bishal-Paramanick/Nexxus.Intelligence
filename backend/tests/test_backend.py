@@ -4,7 +4,6 @@ Comprehensive test suite verifying FastAPI REST endpoints,
 risk calculations, and the LangGraph multi-agent execution pipeline.
 """
 
-import pytest
 from app.agents.graph_agent import run_agent_query
 from app.main import app
 from app.services.analytics import detect_circular_transactions, detect_communities
