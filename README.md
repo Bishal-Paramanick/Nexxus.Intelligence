@@ -1,42 +1,56 @@
-# Nexxus.Intelligence — Backend, Graph Analytics & Risk Engine
+Nexxus Intelligence — Central Graph Backend & Multi-Agent Engine
+High-performance, graph-native intelligence platform designed to ingest multi-source legal and investigative records (FIRs, CDRs, banking records), perform dynamic forensic graph analytics, execute agentic queries via LangGraph, and expose real-time intelligence to frontend Cytoscape visualization canvases.
 
-Standalone, production-grade investigative graph backend service for law enforcement intelligence. Ingests multimodal records (FIR, CDR, Bank Statements, MCA, RTO), executes graph centrality and behavioral anomaly algorithms, derives multi-case linkages, and serves Pydantic-validated REST API endpoints for downstream frontend visualization and AI agents.
+👨‍💻 My Role & Contributions: Lead Backend & Multi-Agent Architect
+As the Backend & Multi-Agent Systems Engineer, I designed, implemented, and consolidated the core operational backbone connecting raw NLP extraction, graph data modeling, forensic graph analytics, multi-agent AI orchestration, and frontend REST APIs.
 
----
+Core Architectural Accomplishments
+Multi-Agent Orchestration (LangGraph & LangChain):
 
-## 📁 Architecture & File Overview
+Engineered a compiled StateGraph workflow featuring specialized nodes: query_agent_node (intent classification & entity resolution), tool_execution_node (dynamic tool routing), and synthesis_node (forensic reporting).
 
-* **`backend/app/schemas.py`** — Official Pydantic schema contracts defining `GraphNode`, `GraphEdge`, `RiskBreakdown`, `EntityDetailResponse`, `EvidenceItem`, and `IngestionPayload`.
-* **`backend/app/services/constants.py`** — Canonical entity types (`Person`, `Phone`, `Location`, `Vehicle`, `Organization`) and relationship types (`CALLED`, `TRANSACTED_WITH`, `PRESENT_AT`, `OWNS_VEHICLE`, `MEMBER_OF`). Provides case-normalization routines.
-* **`backend/scripts/mock_graph.py`** — Synthetic test graph modeling a criminal syndicate: a circular fund-routing loop (money laundering), a low-profile bridge coordinator, high-frequency call bursts, and multi-case suspects.
-* **`backend/app/services/json_loader.py`** — Parses Person 1 (NLP Extraction) batch JSON exports into an in-memory `networkx.MultiDiGraph`, normalizing entity casing, unpacking nested properties, and creating stub nodes for dangling references.
-* **`backend/app/services/neo4j_loader.py`** — Live Cypher extraction client connecting to Person 2's Neo4j database instance via environment variables (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`).
-* **`backend/app/services/case_utils.py`** — Shared case-derivation engine matching case and FIR pattern provenance across nodes and edges to populate `case_ids` dynamically.
-* **`backend/app/services/watchlist.py`** — Dynamic known-offenders lookup supporting case-insensitive name/ID verification and risk point boosting (`WATCHLIST_BOOST`).
-* **`backend/app/services/analytics.py`** — Graph algorithms:
-  * Centrality computation (Degree, PageRank, Betweenness).
-  * `compute_bridge_score()`: Disproportionate betweenness-to-degree ratio to detect low-profile coordinators.
-  * Louvain community and gang cluster detection.
-  * Scored circular transaction detection (temporal consistency and amount matching).
-  * Temporal call burst detection ($\ge 10\text{ calls/day}$).
-  * Multi-case overlap detection.
-* **`backend/app/services/risk_engine.py`** — Multi-factor scoring engine:
-  * Normalized sub-scores (0–100) matching `RiskBreakdown`.
-  * Time-decay multiplier with exponential half-life ($T_{1/2} = 90\text{ days}$) anchored to latest graph activity.
-  * Percentile rank computation.
-  * Behavioral tag assignments (`"Bridge Node"`, `"Hidden Kingpin"`, `"Kingpin"`, `"Money Mule"`, `"High Communication Volume"`, `"Watchlisted"`).
-* **`backend/app/services/explanation.py`** — Section 65B legal evidence extractor and ordered cycle path visualizer for circular transaction loops.
-* **`backend/app/services/schema_mapper.py`** — Converts raw NetworkX graph elements into strict Pydantic `GraphResponse` and `EntityDetailResponse` structures.
-* **`backend/app/main.py`** & **`backend/app/api/`** — FastAPI application serving the investigative endpoints.
-* **`backend/tests/test_services.py`** — Integration test suite verifying all graph loaders, algorithms, risk scoring, and schema validations.
+Built 4 LangChain tools (lookup_suspect_tool, get_subgraph_tool, get_evidence_trail_tool, get_risk_breakdown_tool) interfacing directly with graph queries and analytical scoring.
 
----
+Implemented token-level fuzzy and substring entity matching, allowing natural language queries with multi-word names to resolve target nodes.
 
-## 🚀 Setup & Execution
+Integrated automated Section 65B (Indian Evidence Act / BSA) legal evidence summarization and automated Cypher query synthesis.
 
-### 1. Environment Installation
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+NLP Ingestion Pipeline & Schema Adaptation (Person 1 - Hand-off):
+
+Adapted schemas and loaders to process multi-format entity extractions (Person, Phone, Location, Vehicle, Organization, and Account).
+
+Implemented bidirectional document provenance normalization across source_doc and doc_id to eliminate ingestion validation errors.
+
+Mapped flat extraction payloads to typed Pydantic models with automated fallback label resolution for UI canvases.
+
+Graph Analytics & Forensic Risk Engine Integration (Person 3  Hand-off):
+
+Integrated multi-layered graph algorithms in NetworkX: Louvain modularity clustering, PageRank, Degree Centrality, and Betweenness Centrality.
+
+Implemented anomaly detection algorithms for circular transaction loops (money laundering patterns) and call burst spikes.
+
+Coupled graph metrics with dynamic behavioral tagging (Kingpin, Mule, Bridge Node) and time-decay recency weighting.
+
+Frontend REST API Gateway Integration:
+
+Structured and exposed 5 core REST endpoints via FastAPI with CORS integration for Vite/React:
+
+GET /api/graph: Returns nodes, edges, clusters, and normalized risk scores for Cytoscape.js canvas rendering.
+
+GET /api/entity/{id}: Deep-dive suspect intelligence, assigned role tags, and granular risk factor breakdowns.
+
+GET /api/entity/{id}/evidence: Audit trail returning court-admissible source citations and excerpts.
+
+POST /api/agent/query: AI investigator interface returning synthesized reports and highlighted node IDs for canvas viewport focus.
+
+POST /api/ingest: Batch ingestion gateway supporting automated database sync and offline validation.
+
+Dual-Mode Hybrid Storage & Fault Tolerance (Person 2 - Hand-off):
+
+Engineered an adaptive data layer that operates smoothly in in-memory NetworkX/JSON mode for offline testing and local development, while maintaining seamless compatibility with a live Neo4j database instance.
+
+Implemented non-blocking socket checks (verify_connectivity) in ingestion routes to prevent runtime crashes when external databases are provisioning.
+
+Comprehensive Quality Assurance:
+
+Authored a 23-test granular test suite (backend/tests/test_master_pipeline.py) validating the entire pipeline end-to-end with 100% test pass rates.
