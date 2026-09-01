@@ -1,6 +1,7 @@
+from fastapi import APIRouter, status
+
 from app.database.graph_queries import batch_ingest_payload
 from app.schemas import IngestionPayload, IngestionResponse
-from fastapi import APIRouter, status
 
 # Must define and export 'router'
 router = APIRouter(prefix="/api/ingest", tags=["Ingestion"])

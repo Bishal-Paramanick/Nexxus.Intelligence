@@ -1,14 +1,6 @@
 """
 backend/app/services/risk_engine.py
 Computes per-entity normalized risk scores and tags matching app.schemas.RiskBreakdown.
-
-_recency_multiplier & _graph_reference_time:
-Person 1 (Extraction) & Person 2 (Neo4j):
-Must provide valid ISO-8601 formatted string timestamps (YYYY-MM-DDTHH:MM:SSZ) on interaction edges (CALLED, TRANSACTED_WITH, PRESENT_AT).
-
-compute_risk_breakdown(G):
-Person 1 (Extraction): Must provide accurate cross-case associations (case_ids or source_doc="FIR_*") and circular transaction amounts/times for financial loops.
-Person 4 (API / Schemas): Output dictionary structure must strictly align with the fields expected by RiskBreakdown in schemas.py.
 """
 
 from __future__ import annotations
@@ -150,7 +142,6 @@ def compute_risk_breakdown(G) -> dict[str, dict[str, Any]]:
         call_frequency_score = round(raw_call_frequency_score * recency, 1)
         financial_anomaly_score = round(raw_financial_anomaly_score * recency, 1)
 
-        # Composite centrality score for schemas.RiskBreakdown
         centrality_score = round(
             min(
                 (0.25 * degree_centrality)
@@ -171,7 +162,6 @@ def compute_risk_breakdown(G) -> dict[str, dict[str, Any]]:
             "financial_anomaly_score": financial_anomaly_score,
         }
 
-        # Validate with Pydantic RiskBreakdown schema
         validated_breakdown = RiskBreakdown(**breakdown_dict).model_dump()
 
         base_overall = (

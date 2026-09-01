@@ -5,7 +5,8 @@ Set-Content -Path ".gitignore" -Value @"
 *.env
 
 # Role-specific local exclusions
-backend/app/database/neo4j_driver.py
+backend/app/database
+backend/app/resolution
 frontend/*
 !frontend/.gitkeep
 cypher/*
