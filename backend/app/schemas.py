@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 # 1. GRAPH PRIMITIVES & VISUAL CANVAS SCHEMAS
 # =============================================================================
 
-EntityType = Literal["Person", "Phone", "Location", "Vehicle", "Organization"]
+EntityType = Literal[
+    "Person", "Phone", "Location", "Vehicle", "Organization", "Account"
+]
 RelationshipType = Literal[
     "CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF"
 ]
@@ -20,6 +22,7 @@ class NodeProperties(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     number: str | None = None
     normalized_number: str | None = None
+    account_number: str | None = None
     latitude: float | None = None
     longitude: float | None = None
     registration_number: str | None = None
@@ -29,10 +32,11 @@ class NodeProperties(BaseModel):
 
 
 class GraphNode(BaseModel):
-    id: str = Field(..., description="Stable unique ID (e.g., P001, PH001, LOC001)")
+    id: str = Field(..., description="Stable unique ID (e.g., P001, PH001, ACC001)")
     label: str = Field(..., description="Display title for canvas rendering")
     type: EntityType = Field(
-        ..., description="Neo4j label: Person, Phone, Location, Vehicle, Organization"
+        ...,
+        description="Neo4j label: Person, Phone, Location, Vehicle, Organization, Account",
     )
     risk_score: float = Field(
         default=0.0, ge=0.0, le=100.0, description="Risk score between 0 and 100"
@@ -145,7 +149,10 @@ class EvidenceItem(BaseModel):
 
 class IngestEntity(BaseModel):
     id: str | None = None
-    name: str
+    name: str | None = None
+    number: str | None = None
+    registration_number: str | None = None
+    account_number: str | None = None
     type: EntityType
     aliases: list[str] = Field(default_factory=list)
     source_doc: str | None = None
@@ -157,10 +164,20 @@ class IngestRelationship(BaseModel):
     type: RelationshipType
     target: str = Field(..., description="Target node ID or raw extracted name")
     confidence: float = Field(default=0.9, ge=0.0, le=1.0)
-    doc_id: str = Field(..., description="Source document ID")
+    doc_id: str | None = Field(default=None, description="Source document ID")
+    source_doc: str | None = Field(
+        default=None, description="Alternative key for source document ID"
+    )
     timestamp: str | None = None
+    duration: int | None = None
+    amount: float | None = None
+    role: str | None = None
     evidence: str | None = None
     properties: dict[str, Any] = Field(default_factory=dict)
+
+    def model_post_init(self, __context: Any) -> None:  # noqa: PYI063
+        if not self.doc_id and self.source_doc:
+            self.doc_id = self.source_doc
 
 
 class IngestionPayload(BaseModel):

@@ -31,7 +31,7 @@ def query_agent_node(state: AgentState) -> dict[str, Any]:
     G = load_graph()
     target_entity = None
 
-    # Match ID or case-insensitive name
+    # Pass 1: Match ID or full case-insensitive name
     for node, data in G.nodes(data=True):
         node_str = str(node).lower()
         name_str = str(data.get("name", "")).lower()
@@ -42,6 +42,18 @@ def query_agent_node(state: AgentState) -> dict[str, Any]:
         if name_str and re.search(rf"\b{re.escape(name_str)}\b", query_lower):
             target_entity = str(node)
             break
+
+    # Pass 2: Match individual name tokens (e.g., 'Rahul' -> 'Rahul Sharma')
+    if not target_entity:
+        for node, data in G.nodes(data=True):
+            name_str = str(data.get("name", "")).strip().lower()
+            if name_str:
+                tokens = [t for t in name_str.split() if len(t) > 2]
+                if any(
+                    re.search(rf"\b{re.escape(tok)}\b", query_lower) for tok in tokens
+                ):
+                    target_entity = str(node)
+                    break
 
     # Fallback heuristic: pick token resembling an ID (e.g., P001, PH001)
     if not target_entity:
@@ -83,6 +95,7 @@ def query_agent_node(state: AgentState) -> dict[str, Any]:
         "highlighted_nodes": [],
         "evidence": [],
         "subgraph": None,
+        "final_answer": "",
     }
 
 

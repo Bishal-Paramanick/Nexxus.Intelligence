@@ -1,15 +1,7 @@
 """
 backend/app/services/json_loader.py
-Parses Person 1/2 JSON exports into a networkx MultiDiGraph and derives case linkages.
-
-To Person 1 (NLP Extraction):
-"Ensure every extracted JSON adheres to the IngestionPayload schema ({"entities": [...], "relationships": [...]})."
-"Ensure every entity has a valid, non-empty unique id (e.g., P001, PH001)."
-"Confirm whether entity/edge attributes are placed under nested properties: {...} or flat top-level keys so our loaders parse them cleanly."
-"Ensure every relationship contains source, target, type, doc_id, and evidence for court-ready Section 65B traceability."
-
-To Person 2 (Neo4j Data Engineer):
-"Ensure node and relationship syncs do not leave dangling references (edges referencing entities missing from the node table). Stub nodes (UNKNOWN) will trigger warnings and get filtered out of the API response."
+Parses Abhidha's NLP extraction JSON output into a NetworkX MultiDiGraph
+and derives case linkages.
 """
 
 from __future__ import annotations
@@ -33,14 +25,19 @@ def load_from_json(data: dict[str, Any]) -> nx.MultiDiGraph:
     known_ids: set[str] = set()
 
     for e in entities:
-        node_id = str(e.get("id") or e.get("name"))
+        node_id = str(
+            e.get("id")
+            or e.get("name")
+            or e.get("number")
+            or e.get("registration_number")
+            or e.get("account_number")
+        )
         if not node_id:
             continue
 
-        # Extract top-level attributes
         attrs: dict[str, Any] = {k: v for k, v in e.items() if k != "id"}
 
-        # Unpack nested properties dict if present (Pydantic IngestEntity format)
+        # Unpack nested properties dict if present
         if "properties" in attrs and isinstance(attrs["properties"], dict):
             nested_props = attrs.pop("properties")
             for prop_k, prop_v in nested_props.items():
@@ -51,6 +48,15 @@ def load_from_json(data: dict[str, Any]) -> nx.MultiDiGraph:
         if "type" in attrs:
             attrs["type"] = normalize_entity_type(attrs["type"])
 
+        # Normalize name property across type variants
+        if "name" not in attrs:
+            attrs["name"] = (
+                attrs.get("number")
+                or attrs.get("registration_number")
+                or attrs.get("account_number")
+                or node_id
+            )
+
         G.add_node(node_id, **attrs)
         known_ids.add(node_id)
 
@@ -58,6 +64,7 @@ def load_from_json(data: dict[str, Any]) -> nx.MultiDiGraph:
         src = str(r.get("source"))
         tgt = str(r.get("target"))
         rel_type = str(r.get("type", "ASSOCIATED_WITH"))
+        doc_ref = str(r.get("source_doc") or r.get("doc_id") or "")
 
         # Safety check for dangling references
         for node_id in (src, tgt):
@@ -81,6 +88,8 @@ def load_from_json(data: dict[str, Any]) -> nx.MultiDiGraph:
                     edge_attrs[prop_k] = prop_v
 
         edge_attrs["edge_type"] = rel_type
+        edge_attrs["source_doc"] = doc_ref
+        edge_attrs["doc_id"] = doc_ref
         edge_key = r.get("id") or f"rel{idx}"
         G.add_edge(src, tgt, key=edge_key, **edge_attrs)
 

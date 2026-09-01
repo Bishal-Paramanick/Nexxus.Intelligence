@@ -1,7 +1,7 @@
 """
-constants.py
+backend/app/services/constants.py
 Single source of truth for entity and relationship type definitions.
-Aligned with backend/app/schemas.py contracts.
+Aligned with backend/app/schemas.py contracts and Abhidha's extraction output.
 """
 
 # --- Canonical Entity Types (Title Case) ---
@@ -11,9 +11,10 @@ ENTITY_TYPES: set[str] = {
     "Location",
     "Vehicle",
     "Organization",
+    "Account",
 }
 
-# Normalization mapping to accept uppercase legacy formats and map to Title Case
+# Normalization mapping to accept casing variants and raw extraction labels
 _TYPE_NORMALIZE: dict[str, str] = {
     "PERSON": "Person",
     "Person": "Person",
@@ -25,6 +26,9 @@ _TYPE_NORMALIZE: dict[str, str] = {
     "Vehicle": "Vehicle",
     "ORGANIZATION": "Organization",
     "Organization": "Organization",
+    "ORG": "Organization",
+    "ACCOUNT": "Account",
+    "Account": "Account",
 }
 
 
@@ -33,7 +37,7 @@ def normalize_entity_type(raw_type: str) -> str:
     Maps casing variants to official Title Case names.
     Unknown types pass through unchanged.
     """
-    return _TYPE_NORMALIZE.get(raw_type, raw_type)
+    return _TYPE_NORMALIZE.get(raw_type.strip(), raw_type)
 
 
 # --- Canonical Relationship Types ---
