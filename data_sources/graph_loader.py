@@ -10,9 +10,9 @@ import os
 
 import networkx as nx
 from pathlib import Path
-from graph.data_sources.mock_graph import build_mock_graph
-from graph.data_sources.json_loader import load_from_json_file
-from graph.data_sources.neo4j_loader import load_from_neo4j
+from .mock_graph import build_mock_graph
+from .json_loader import load_from_json_file
+from .neo4j_loader import load_from_neo4j
 
 # "mock" for the built-in test graph, "json" for Person 1/2's JSON export
 # file, "neo4j" for Person 2's live graph DB.

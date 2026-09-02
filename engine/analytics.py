@@ -229,7 +229,7 @@ def detect_cross_case_entities(G: nx.MultiDiGraph) -> dict:
 
 
 if __name__ == "__main__":
-    from graph.data_sources.graph_loader import load_graph
+    from ..data_sources.graph_loader import load_graph
     import json
 
     G = load_graph()

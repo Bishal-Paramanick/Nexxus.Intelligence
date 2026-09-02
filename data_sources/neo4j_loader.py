@@ -23,7 +23,7 @@ via environment variables if Person 2's instance runs elsewhere.
 import os
 import networkx as nx
 from neo4j import GraphDatabase
-from graph.data_sources.case_utils import derive_case_ids
+from .case_utils import derive_case_ids
 
 NEO4J_URI = os.environ.get("NEO4J_URL", os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7687"))
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")

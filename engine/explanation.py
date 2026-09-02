@@ -11,8 +11,8 @@ AgentQueryResponse.evidence and .highlighted_nodes.
 """
 
 import re
-from graph.contracts.schemas import EvidenceItem
-from graph.engine.analytics import detect_circular_transactions
+from ..contracts.schemas import EvidenceItem
+from .analytics import detect_circular_transactions
 
 _DOC_TYPE_PATTERNS = [
     (re.compile(r"^FIR_"), "FIR"),

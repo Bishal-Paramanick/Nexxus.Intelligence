@@ -13,14 +13,14 @@ analytics.py or risk_engine.py directly.
 
 import warnings
 
-from graph.contracts.schemas import (
+from ..contracts.schemas import (
     GraphNode, GraphEdge, GraphResponse, NodeProperties, EdgeProperties,
     RiskBreakdown, EntityDetailResponse,
 )
-from graph.contracts.constants import normalize_entity_type, OFFICIAL_EDGE_TYPES
-from graph.engine.risk_engine import compute_risk_breakdown
-from graph.engine.analytics import detect_communities
-from graph.engine.explanation import get_entity_evidence, get_explanation_path
+from ..contracts.constants import normalize_entity_type, OFFICIAL_EDGE_TYPES
+from ..engine.risk_engine import compute_risk_breakdown
+from ..engine.analytics import detect_communities
+from ..engine.explanation import get_entity_evidence, get_explanation_path
 
 
 def _build_node_properties(node_id: str, data: dict) -> NodeProperties:

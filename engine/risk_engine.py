@@ -21,7 +21,7 @@ version of this file -- see project history).
 import json
 from datetime import datetime
 
-from graph.engine.analytics import (
+from .analytics import (
     compute_centrality,
     compute_bridge_score,
     detect_communities,
@@ -29,7 +29,7 @@ from graph.engine.analytics import (
     detect_call_bursts,
     detect_cross_case_entities,
 )
-from graph.engine.watchlist import check_watchlist, WATCHLIST_BOOST
+from .watchlist import check_watchlist, WATCHLIST_BOOST
 
 WEIGHTS = {
     "degree_centrality": 0.05,
@@ -205,7 +205,7 @@ def compute_risk_breakdown(G) -> dict:
 
 
 if __name__ == "__main__":
-    from graph.data_sources.graph_loader import load_graph
+    from ..data_sources.graph_loader import load_graph
 
     G = load_graph()
     breakdown = compute_risk_breakdown(G)

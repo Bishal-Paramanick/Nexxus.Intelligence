@@ -24,9 +24,9 @@ Usage in Person 4's FastAPI app:
         return result
 """
 
-from graph.data_sources.graph_loader import load_graph
-from graph.api.schema_mapper import build_graph_response, build_entity_detail
-from graph.contracts.schemas import GraphResponse, EntityDetailResponse
+from ..data_sources.graph_loader import load_graph
+from .schema_mapper import build_graph_response, build_entity_detail
+from ..contracts.schemas import GraphResponse, EntityDetailResponse
 
 
 def get_full_analysis() -> GraphResponse:

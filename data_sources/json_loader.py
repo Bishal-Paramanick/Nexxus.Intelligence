@@ -27,8 +27,8 @@ import warnings
 from collections import defaultdict
 
 import networkx as nx
-from graph.contracts.constants import normalize_entity_type
-from graph.data_sources.case_utils import derive_case_ids
+from ..contracts.constants import normalize_entity_type
+from .case_utils import derive_case_ids
 
 FIR_PATTERN = re.compile(r"^FIR_")
 
