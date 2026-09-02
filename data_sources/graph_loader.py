@@ -6,6 +6,8 @@ Person 1/2 JSON export, or a live Neo4j instance -- nothing else in this
 folder needs to change when you switch.
 """
 
+import os
+
 import networkx as nx
 from pathlib import Path
 from graph.data_sources.mock_graph import build_mock_graph
@@ -14,7 +16,7 @@ from graph.data_sources.neo4j_loader import load_from_neo4j
 
 # "mock" for the built-in test graph, "json" for Person 1/2's JSON export
 # file, "neo4j" for Person 2's live graph DB.
-DATA_SOURCE = "mock"  # "mock" | "json" | "neo4j"
+DATA_SOURCE = os.environ.get("GRAPH_DATA_SOURCE", "neo4j")
 JSON_DATA_PATH = str(Path(__file__).resolve().parent.parent / "sample_data" / "ground_truth_case.json")  # used when DATA_SOURCE == "json"
 
 
