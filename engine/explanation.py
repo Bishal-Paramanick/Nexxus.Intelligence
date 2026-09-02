@@ -41,7 +41,7 @@ def get_entity_evidence(G, entity_id: str) -> list[EvidenceItem]:
     seen = set()
     edges = list(G.edges(entity_id, data=True)) + list(G.in_edges(entity_id, data=True))
     for u, v, data in edges:
-        doc_id = data.get("source_doc")
+        doc_id = data.get("source_doc_id") or data.get("source_doc")
         excerpt = data.get("evidence")
         if not doc_id or not excerpt:
             continue

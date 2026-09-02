@@ -24,13 +24,13 @@ def derive_case_ids(G) -> None:
     fir_refs = defaultdict(set)
 
     for u, v, data in G.edges(data=True):
-        doc = data.get("source_doc", "") or ""
+        doc = data.get("source_doc_id") or data.get("source_doc") or ""
         if FIR_PATTERN.search(doc):
             fir_refs[u].add(doc)
             fir_refs[v].add(doc)
 
     for node_id, node_data in G.nodes(data=True):
-        doc = node_data.get("source_doc", "") or ""
+        doc = node_data.get("source_doc_id") or node_data.get("source_doc") or ""
         if FIR_PATTERN.search(doc):
             fir_refs[node_id].add(doc)
 

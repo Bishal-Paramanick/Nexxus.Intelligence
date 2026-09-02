@@ -103,7 +103,7 @@ def build_graph_response(G) -> GraphResponse:
             target=v,
             type=edge_type,
             confidence=data.get("confidence", 1.0),
-            doc_id=data.get("source_doc"),
+            doc_id=data.get("source_doc_id") or data.get("source_doc"),
             properties=EdgeProperties(
                 timestamp=data.get("timestamp"),
                 duration=data.get("duration_sec") or data.get("duration"),
