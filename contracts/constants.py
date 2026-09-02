@@ -40,7 +40,7 @@ def normalize_entity_type(raw_type: str) -> str:
 # we stop using it), we keep it in our INTERNAL analytics graph -- it's still
 # useful for community detection -- but schema_mapper.py filters it out
 # before building the GraphResponse that goes to their API.
-OFFICIAL_EDGE_TYPES = {"CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF"}
+OFFICIAL_EDGE_TYPES = {"CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF", "OWNS_PHONE"}
 INTERNAL_ONLY_EDGE_TYPES = {"ASSOCIATED_WITH"}  # analytics-only, not sent to the API
 EDGE_TYPES = OFFICIAL_EDGE_TYPES | INTERNAL_ONLY_EDGE_TYPES
 

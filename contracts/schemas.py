@@ -18,9 +18,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 EntityType = Literal["Person", "Phone", "Location", "Vehicle", "Organization"]
-RelationshipType = Literal[
-    "CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF"
-]
+RelationshipType = Literal["CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF", "OWNS_PHONE"]
 
 
 class NodeProperties(BaseModel):
