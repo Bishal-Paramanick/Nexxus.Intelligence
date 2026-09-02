@@ -34,8 +34,8 @@ NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
 # that's what we key networkx nodes by, matching every other loader.
 _NODE_QUERY = "MATCH (n) RETURN n AS node, labels(n)[0] AS label"
 _EDGE_QUERY = """
-MATCH (a)-[r]->(b)
-RETURN a.id AS source, b.id AS target, type(r) AS rel_type, properties(r) AS props
+ MATCH (a)-[r]->(b) WHERE a.id IS NOT NULL AND b.id IS NOT NULL
+ RETURN a.id AS source, b.id AS target, type(r) AS rel_type, properties(r) AS props
 """
 
 # Some entity types don't have a "name" field in Person 2's schema (Phone
@@ -58,7 +58,8 @@ def load_from_neo4j(uri: str = NEO4J_URI, user: str = NEO4J_USER, password: str 
             for record in session.run(_NODE_QUERY):
                 node = record["node"]
                 label = record["label"]
-                node_id = node["id"]
+                node_id =  node.get("id")
+                if not node_id: continue
                 attrs = dict(node)
                 attrs["type"] = label
                 if "name" not in attrs:
