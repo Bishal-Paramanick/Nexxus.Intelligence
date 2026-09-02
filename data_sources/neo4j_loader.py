@@ -25,9 +25,10 @@ import networkx as nx
 from neo4j import GraphDatabase
 from graph.data_sources.case_utils import derive_case_ids
 
-NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+NEO4J_URI = os.environ.get("NEO4J_URL", os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7687"))
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "Arnish123")
+NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
 
 # Every entity type carries an "id" property (P001, PH001, LOC001, ...) --
 # that's what we key networkx nodes by, matching every other loader.
@@ -53,7 +54,7 @@ def load_from_neo4j(uri: str = NEO4J_URI, user: str = NEO4J_USER, password: str 
     G = nx.MultiDiGraph()
 
     try:
-        with driver.session() as session:
+        with driver.session(database=NEO4J_DATABASE) as session:
             for record in session.run(_NODE_QUERY):
                 node = record["node"]
                 label = record["label"]
