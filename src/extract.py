@@ -10,9 +10,18 @@ Entity extraction from FIR text files
 import re
 import os
 import spacy
+import json
 from spacy.pipeline import EntityRuler
 
 nlp = spacy.load("en_core_web_trf")
+
+# ---- Geocoding ----
+# District line in FIR headers, e.g. "District: North 24 Parganas" -- used
+# as a search-bias hint so ambiguous names like "Park Street" resolve to
+# the right city instead of a same-named street elsewhere in India.
+DISTRICT_PATTERN = re.compile(r"^District:\s*(.+)$", re.MULTILINE)
+
+GEOCODE_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "geocode_cache.json")
 
 # ---- Custom regex patterns ----
 PHONE_PATTERN = re.compile(r"\b[6-9]\d{9}\b")                       # Indian mobile numbers
@@ -260,6 +269,24 @@ def _resolve_token_to_entity(token, entity_spans):
 
 EXPECTED_PREP = {"MEMBER_OF": "for", "TRANSACTED_WITH": "to"}
 
+# Best-effort role/title extraction for MEMBER_OF relationships, e.g.
+# "worked as a field collection agent for Sharma Traders" -> "field
+# collection agent". Tries the "as a/an <role> for" phrasing first (most
+# specific), then falls back to any "a/an <role> for" phrase in the
+# sentence. Returns None (not a guess) if neither matches.
+ROLE_PATTERN_AS = re.compile(r"\bas\s+(?:a|an)\s+([a-zA-Z][a-zA-Z\s]*?)\s+for\b", re.IGNORECASE)
+ROLE_PATTERN_FALLBACK = re.compile(r"\b(?:a|an)\s+([a-zA-Z][a-zA-Z\s]*?)\s+for\b", re.IGNORECASE)
+
+
+def extract_role(sent_text: str):
+    """Best-effort extraction of a job title/role preceding 'for <org>' in
+    a sentence. Returns None if no such phrase is found -- we don't guess."""
+    m = ROLE_PATTERN_AS.search(sent_text) or ROLE_PATTERN_FALLBACK.search(sent_text)
+    if m:
+        role = m.group(1).strip()
+        return role if role else None
+    return None
+
 
 def _find_subject(token, max_depth=3):
     """
@@ -350,8 +377,13 @@ def extract_relationships_from_text(text: str, doc_id: str, entity_id_lookup: di
                 target_token = prep_obj if rel_type in ("TRANSACTED_WITH", "MEMBER_OF") and prep_obj else (dobj or prep_obj)
                 if target_token is None or target_token.pos_ == "PRON":
                     continue
-                target_name, _ = _resolve_token_to_entity(target_token, entity_spans)
+                target_name, target_type = _resolve_token_to_entity(target_token, entity_spans)
                 if not target_name:
+                    continue
+                # PRESENT_AT must land on a LOCATION -- without this check,
+                # "met John" would wrongly resolve to a PERSON target and
+                # get emitted as a (person, PRESENT_AT, person) edge.
+                if rel_type == "PRESENT_AT" and target_type != "LOCATION":
                     continue
 
             if source_name == target_name:
@@ -362,17 +394,78 @@ def extract_relationships_from_text(text: str, doc_id: str, entity_id_lookup: di
             if not source_id or not target_id:
                 continue  # shouldn't happen if entity list is complete, but be safe
 
-            relationships.append({
+            rel = {
                 "source": source_id,
                 "type": rel_type,
                 "target": target_id,
                 "confidence": 0.85,  # inferred from free text -> moderate-high confidence
                 "doc_id": doc_id,
                 "evidence": sent.text.strip(),  # original sentence, for the evidence trail
-            })
+            }
+            if rel_type == "MEMBER_OF":
+                rel["role"] = extract_role(sent.text)
+
+            relationships.append(rel)
 
     return relationships
 
+
+
+def extract_ownership_relationships_from_text(text: str, doc_id: str, entity_id_lookup: dict,
+                                               existing_pairs: set):
+    """
+    Fallback ownership pass for OWNS_PHONE (and, secondarily, OWNS_VEHICLE)
+    edges that the verb-based parser above can't catch, because FIR text
+    usually states ownership as a bare possessive noun phrase ("his mobile
+    number is 9876543210", "her vehicle WB01AB1234") rather than a clean
+    subject-verb-object sentence with "own"/"drive".
+
+    Heuristic: within each sentence, whichever PERSON entity appears
+    closest before a PHONE or VEHICLE entity is treated as the owner.
+    This is positional, not syntactic, so it's strictly a fallback --
+    `existing_pairs` (built from the verb-based relationships already
+    extracted) is checked first so we never emit a duplicate edge, and
+    confidence is set lower (0.6) to reflect that it's inferred from
+    proximity rather than an explicit ownership verb.
+    """
+    text = clean_text(text)
+    doc = nlp(text)
+    entity_spans = _get_entity_spans_for_relationships(doc, text)
+    relationships = []
+
+    for sent in doc.sents:
+        sent_spans = sorted(
+            (s for s in entity_spans if s[0] >= sent.start_char and s[1] <= sent.end_char),
+            key=lambda s: s[0],
+        )
+
+        last_person = None
+        for start, end, name, etype in sent_spans:
+            if etype == "PERSON":
+                last_person = name
+                continue
+            if etype in ("PHONE", "VEHICLE") and last_person:
+                rel_type = "OWNS_PHONE" if etype == "PHONE" else "OWNS_VEHICLE"
+                source_id = entity_id_lookup.get(last_person)
+                target_id = entity_id_lookup.get(name)
+                if not source_id or not target_id:
+                    continue
+
+                pair_key = (source_id, target_id, rel_type)
+                if pair_key in existing_pairs:
+                    continue  # already have this edge from the verb-based pass
+                existing_pairs.add(pair_key)
+
+                relationships.append({
+                    "source": source_id,
+                    "type": rel_type,
+                    "target": target_id,
+                    "confidence": 0.6,  # positional heuristic, not verb-derived
+                    "doc_id": doc_id,
+                    "evidence": sent.text.strip(),
+                })
+
+    return relationships
 
 
 def build_entity_id_lookup(deduped_entities):
@@ -529,29 +622,195 @@ CONTRACT_ID_PREFIXES = {
 }
 
 ALLOWED_RELATIONSHIP_TYPES = {
-    "CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF"
+    "CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF", "OWNS_PHONE"
 }
 
-# Fragile best-effort vehicle-type extraction: looks for a descriptive
-# phrase ("grey Hyundai Creta", "Toyota Innova") immediately preceding
-# "bearing registration ..." in the same sentence as a plate number.
-# Falls back to "Unknown" if no such phrase is found — this is a known
-# limitation (only catches this specific FIR phrasing pattern).
+# Fragile best-effort vehicle-description extraction: looks for a
+# descriptive phrase ("grey Hyundai Creta", "silver Honda City")
+# immediately preceding "bearing registration ..." in the same sentence
+# as a plate number. Falls back to "Unknown" if no such phrase is found —
+# this is a known limitation (only catches this specific FIR phrasing
+# pattern).
 VEHICLE_TYPE_PATTERN = re.compile(
     r"\b((?:[a-z]+\s)?[A-Z][a-zA-Z]*(?:\s+[A-Za-z]+){0,3})\s+bearing\s+registration"
 )
 DETERMINER_STRIP = re.compile(r"^(a|an|the)\s+", re.IGNORECASE)
 
+# The contract only allows these three category values for vehicle_type.
+VEHICLE_COLOURS = {
+    "white", "black", "silver", "grey", "gray", "red", "blue", "green",
+    "yellow", "brown", "maroon", "golden", "gold", "orange", "purple",
+    "pink", "beige", "navy", "cream", "charcoal", "bronze",
+}
 
-def extract_vehicle_type(full_text: str, plate: str) -> str:
-    """Best-effort extraction of vehicle type/description near a plate
-    mention. Returns 'Unknown' if no descriptive phrase is found."""
+TWO_WHEELER_KEYWORDS = re.compile(
+    r"\b(motorcycle|motorbike|bike|scooter|scooty|moped|bicycle|cycle|"
+    r"activa|splendor|splendour|pulsar|bullet|royal\s?enfield|ktm|apache|"
+    r"fz|access|jupiter|dio|ntorq)\b", re.IGNORECASE)
+
+THREE_WHEELER_KEYWORDS = re.compile(
+    r"\b(auto[\s-]?rickshaw|rickshaw|tempo|toto|e-rickshaw|three[\s-]?wheeler)\b",
+    re.IGNORECASE)
+
+# Deliberately broad: common car brands/models/body-styles. Order doesn't
+# matter here since it's checked only after two/three-wheeler keywords
+# have already been ruled out.
+CAR_KEYWORDS = re.compile(
+    r"\b(car|sedan|hatchback|suv|swift|innova|city|creta|alto|baleno|"
+    r"verna|ciaz|amaze|wagon\s?r|santro|duster|xuv|scorpio|bolero|"
+    r"fortuner|camry|corolla|civic|accord|polo|vento|rapid|octavia|"
+    r"sonata|elantra|maruti|hyundai|toyota|honda|tata|mahindra|kia|"
+    r"renault|nissan|ford|volkswagen|skoda)\b", re.IGNORECASE)
+
+
+def classify_vehicle_category(description: str) -> str:
+    """Buckets a free-text vehicle description into the three allowed
+    contract categories -- Car, Two-Wheeler, Three-Wheeler -- based on
+    keyword matches. Returns 'Unknown' if nothing matches. Checked in
+    two/three-wheeler-first order since a few two-wheeler brand names
+    could otherwise coincidentally trip a car keyword."""
+    if not description or description == "Unknown":
+        return "Unknown"
+    if TWO_WHEELER_KEYWORDS.search(description):
+        return "Two-Wheeler"
+    if THREE_WHEELER_KEYWORDS.search(description):
+        return "Three-Wheeler"
+    if CAR_KEYWORDS.search(description):
+        return "Car"
+    return "Unknown"
+
+
+def split_colour_and_model(description: str):
+    """Splits a raw descriptive phrase like 'silver Honda City' into
+    ('Silver', 'Honda City'). If the first word isn't a recognized
+    colour, colour is None and the whole phrase is treated as the model."""
+    if not description or description == "Unknown":
+        return None, "Unknown"
+    words = description.split()
+    if words and words[0].lower() in VEHICLE_COLOURS:
+        colour = words[0].capitalize()
+        model = " ".join(words[1:]).strip() or "Unknown"
+        return colour, model
+    return None, description
+
+
+def extract_vehicle_details(full_text: str, plate: str):
+    """
+    Best-effort extraction of (category, model, colour) near a plate
+    mention. category is always one of "Car" / "Two-Wheeler" /
+    "Three-Wheeler" / "Unknown" -- never a raw description -- per the
+    contract. model and colour fall back to "Unknown" / None when no
+    descriptive phrase is found near the plate, which is a known
+    limitation (only catches this specific FIR phrasing pattern).
+    """
     for sent in re.split(r"(?<=[.!?])\s+", full_text):
         if plate in sent:
             m = VEHICLE_TYPE_PATTERN.search(sent)
             if m:
-                return DETERMINER_STRIP.sub("", m.group(1)).strip()
-    return "Unknown"
+                description = DETERMINER_STRIP.sub("", m.group(1)).strip()
+                colour, model = split_colour_and_model(description)
+                category = classify_vehicle_category(description)
+                return category, model, colour
+    return "Unknown", "Unknown", None
+
+def load_geocode_cache() -> dict:
+    """On-disk cache so repeated location names (e.g. 'Howrah' appearing
+    in multiple FIRs) don't re-hit the geocoder, and so reruns still work
+    without internet as long as a cache from a prior run exists."""
+    if os.path.exists(GEOCODE_CACHE_PATH):
+        try:
+            with open(GEOCODE_CACHE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def save_geocode_cache(cache: dict):
+    os.makedirs(os.path.dirname(GEOCODE_CACHE_PATH), exist_ok=True)
+    with open(GEOCODE_CACHE_PATH, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2)
+
+
+def extract_district_hints(doc_texts: dict) -> dict:
+    """doc_id -> district string pulled from the FIR header, used to bias
+    ambiguous location names toward the right part of the country."""
+    hints = {}
+    for doc_id, text in doc_texts.items():
+        m = DISTRICT_PATTERN.search(text)
+        if m:
+            hints[doc_id] = m.group(1).strip()
+    return hints
+
+
+def build_geocoder():
+    """Rate-limited geocode function, or None if geopy can't be
+    initialized (not installed / no internet). Callers must handle a
+    None geocoder by leaving lat/long as None, not crashing."""
+    try:
+        from geopy.geocoders import Nominatim
+        from geopy.extra.rate_limiter import RateLimiter
+    except ImportError:
+        print("  [geocoding] geopy not installed -- leaving coordinates as null.")
+        return None
+
+    try:
+        # Nominatim's usage policy requires a real user agent and caps
+        # requests at ~1/sec -- RateLimiter enforces the delay for us.
+        geolocator = Nominatim(user_agent="fir_entity_extraction_pipeline")
+        return RateLimiter(geolocator.geocode, min_delay_seconds=1, max_retries=2, error_wait_seconds=2)
+    except Exception as exc:
+        print(f"  [geocoding] could not initialize geocoder ({exc}). Leaving coordinates as null.")
+        return None
+
+
+def geocode_location(name: str, district_hint: str, geocode_fn, cache: dict):
+    """
+    Resolves a LOCATION entity name to (latitude, longitude, city, state).
+    Tries the cache first, then "<name>, <district>, West Bengal, India",
+    then a plainer "<name>, West Bengal, India". city/state are read off
+    Nominatim's address breakdown for whichever query succeeds.
+
+    Returns (None, None, None, None) if nothing resolves -- expected for
+    vague references like "residence" or "tea stall" that aren't real
+    map-searchable places.
+    """
+    if geocode_fn is None:
+        return None, None, None, None
+
+    cache_key = f"{name}|{district_hint or ''}"
+    if cache_key in cache:
+        cached = cache[cache_key]
+        if len(cached) == 4:
+            return cached[0], cached[1], cached[2], cached[3]
+        # stale entry from before city/state were added -- fall through
+        # and re-fetch instead of returning incomplete data
+
+    queries = []
+    if district_hint:
+        queries.append(f"{name}, {district_hint}, West Bengal, India")
+    queries.append(f"{name}, West Bengal, India")
+
+    lat, lon, city, state = None, None, None, None
+    for query in queries:
+        try:
+            result = geocode_fn(query, addressdetails=True)
+        except Exception as exc:
+            print(f"  [geocoding] lookup failed for '{query}': {exc}")
+            continue
+        if result:
+            lat, lon = result.latitude, result.longitude
+            address = result.raw.get("address", {}) if hasattr(result, "raw") else {}
+            # Nominatim doesn't have one consistent "city" key across all
+            # places -- fall through the most specific -> least specific
+            # settlement-type fields it provides.
+            city = (address.get("city") or address.get("town") or address.get("village")
+                    or address.get("suburb") or address.get("county"))
+            state = address.get("state")
+            break
+
+    cache[cache_key] = [lat, lon, city, state]
+    return lat, lon, city, state
 
 
 def build_contract_entities(deduped_entities, doc_texts: dict):
@@ -565,6 +824,11 @@ def build_contract_entities(deduped_entities, doc_texts: dict):
     """
     contract_entities = []
     type_counters = {}
+    
+    district_hints = extract_district_hints(doc_texts)
+    geocode_fn = build_geocoder()
+    geocode_cache = load_geocode_cache()
+    geocoded_any = False
 
     for e in deduped_entities:
         internal_type = e["type"]
@@ -589,24 +853,34 @@ def build_contract_entities(deduped_entities, doc_texts: dict):
             record["number"] = e["name"]
         elif contract_type == "Location":
             record["name"] = e["name"]
-            record["latitude"] = None   # TODO: needs geocoding step (unowned)
-            record["longitude"] = None  # TODO: needs geocoding step (unowned)
+            district_hint = district_hints.get(record["source_doc"])
+            lat, lon, city, state = geocode_location(e["name"], district_hint, geocode_fn, geocode_cache)
+            record["latitude"] = lat
+            record["longitude"] = lon
+            record["city"] = city
+            record["state"] = state
+            geocoded_any = True
         elif contract_type == "Vehicle":
             record["registration_number"] = e["name"]
             # Search across all docs this plate was mentioned in
-            vtype = "Unknown"
+            category, model, colour = "Unknown", "Unknown", None
             for doc_id in e["mentioned_in"]:
                 text = doc_texts.get(doc_id, "")
-                vtype = extract_vehicle_type(text, e["name"])
-                if vtype != "Unknown":
+                category, model, colour = extract_vehicle_details(text, e["name"])
+                if category != "Unknown":
                     break
-            record["vehicle_type"] = vtype  # best-effort; may be "Unknown"
+            record["vehicle_type"] = category  # one of Car / Two-Wheeler / Three-Wheeler / Unknown
+            record["model"] = model            # e.g. "Honda City"; best-effort, may be "Unknown"
+            record["colour"] = colour          # e.g. "Silver"; best-effort, may be None
         elif contract_type == "Organization":
             record["name"] = e["name"]
         elif contract_type == "Account":
             record["account_number"] = e["name"]
 
         contract_entities.append(record)
+    
+    if geocoded_any:
+        save_geocode_cache(geocode_cache)
 
     return contract_entities
 
@@ -729,6 +1003,20 @@ if __name__ == "__main__":
             continue
         rels = extract_relationships_from_text(text, doc_id, entity_id_lookup)
         all_relationships.extend(rels)
+
+    # --- ownership fallback pass (OWNS_PHONE, and OWNS_VEHICLE cases the
+    # verb parser missed) -- run only after the verb-based pass so we know
+    # which (source, target, type) edges already exist and can be skipped ---
+    existing_pairs = {(r["source"], r["target"], r["type"]) for r in all_relationships}
+    for filepath, doc_id in files:
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                text = f.read()
+        except FileNotFoundError:
+            continue
+        all_relationships.extend(
+            extract_ownership_relationships_from_text(text, doc_id, entity_id_lookup, existing_pairs)
+        )
 
     print(f"\n--- Relationships extracted from text: {len(all_relationships)} ---")
     for r in all_relationships:
