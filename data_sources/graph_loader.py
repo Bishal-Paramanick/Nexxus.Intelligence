@@ -12,7 +12,7 @@ import networkx as nx
 from pathlib import Path
 from .mock_graph import build_mock_graph
 from .json_loader import load_from_json_file
-from .neo4j_loader import load_from_neo4j
+
 
 # "mock" for the built-in test graph, "json" for Person 1/2's JSON export
 # file, "neo4j" for Person 2's live graph DB.
@@ -22,6 +22,7 @@ JSON_DATA_PATH = str(Path(__file__).resolve().parent.parent / "sample_data" / "g
 
 def load_graph() -> nx.MultiDiGraph:
     if DATA_SOURCE == "neo4j":
+        from .neo4j_loader import load_from_neo4j
         return load_from_neo4j()  # reads NEO4J_URI/NEO4J_USER/NEO4J_PASSWORD env vars, see neo4j_loader.py
     if DATA_SOURCE == "json":
         return load_from_json_file(JSON_DATA_PATH)
