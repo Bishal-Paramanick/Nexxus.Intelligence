@@ -72,6 +72,53 @@ def compute_bridge_score(centrality: dict) -> dict:
         scores[node] = round(c["betweenness_centrality"] / degree, 4)
     return scores
 
+#....................................................................
+#SHARED ORGANIZATION HUBS
+#.....................................................................
+ORG_LINK_TYPES = {"MEMBER_OF", "TRANSACTED_WITH"}
+MIN_SHARED_ORG_SUSPECTS = 3   # kitne alag Person nodes ek Organization se
+                               # judy hon tabhi use "hub" maana jaaye
+
+
+def detect_organization_hubs(G: nx.MultiDiGraph) -> dict:
+    """Returns {org_node: {member_person_nodes...}} for Organization
+    nodes with at least MIN_SHARED_ORG_SUSPECTS distinct Person members
+    -- a strong signal on its own (many suspects funneling through one
+    shell entity), independent of any individual's own risk score."""
+    org_members = defaultdict(set)
+    for u, v, data in G.edges(data=True):
+        if data.get("edge_type") not in ORG_LINK_TYPES:
+            continue
+        u_type = G.nodes.get(u, {}).get("type")
+        v_type = G.nodes.get(v, {}).get("type")
+        if u_type == "Organization" and v_type == "Person":
+            org_members[u].add(v)
+        elif v_type == "Organization" and u_type == "Person":
+            org_members[v].add(u)
+
+    return {org: members for org, members in org_members.items()
+            if len(members) >= MIN_SHARED_ORG_SUSPECTS}
+
+
+def compute_shared_organization_score(G: nx.MultiDiGraph) -> dict:
+    """Returns {person_node: score 0-100} -- how central this person is
+    to a shared-organization hub, scaled by that hub's size relative to
+    the biggest hub in the graph."""
+    hubs = detect_organization_hubs(G)
+    if not hubs:
+        return {}
+
+    max_members = max(len(members) for members in hubs.values())
+    scores = {}
+    for members in hubs.values():
+        raw = len(members) / max_members
+        for person in members:
+            scores[person] = max(scores.get(person, 0.0), round(raw * 100, 1))
+    return scores
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # Community detection
@@ -87,8 +134,9 @@ def detect_communities(G: nx.MultiDiGraph) -> dict:
             undirected[u][v]["weight"] += W
         else:
             undirected.add_edge(u, v, weight=W)
+    LOUVAIN_RESOLUTION = 0.8 
 
-    communities = nx.algorithms.community.louvain_communities(undirected, weight="weight", seed=42)
+    communities = nx.algorithms.community.louvain_communities(undirected, weight="weight",resolution=LOUVAIN_RESOLUTION, seed=42)
 
     node_to_community = {}
     for idx, community in enumerate(communities):

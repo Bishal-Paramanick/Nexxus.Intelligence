@@ -24,10 +24,10 @@ from datetime import datetime
 from .analytics import (
     compute_centrality,
     compute_bridge_score,
-    detect_communities,
     detect_circular_transactions,
     detect_call_bursts,
     detect_cross_case_entities,
+    compute_shared_organization_score,
 )
 from .watchlist import check_watchlist, WATCHLIST_BOOST
 
@@ -131,6 +131,7 @@ def compute_risk_breakdown(G) -> dict:
     centrality = compute_centrality(G)
     bridge_scores = compute_bridge_score(centrality)
     cross_case = detect_cross_case_entities(G)
+    shared_org_scores = compute_shared_organization_score(G)
     circular_txns = detect_circular_transactions(G)
     call_bursts = detect_call_bursts(G)
     reference_dt = _graph_reference_time(G)
@@ -208,6 +209,8 @@ def compute_risk_breakdown(G) -> dict:
             tags.append("Watchlisted")
         if vehicle_reason:
             tags.append("Vehicle Flagged")
+        if shared_org_scores.get(node, 0.0) >= 60:
+            tags.append("Shell Hub Member")
 
         distinct_neighbors = set(G.predecessors(node)) | set(G.successors(node))
 
@@ -220,6 +223,7 @@ def compute_risk_breakdown(G) -> dict:
             "watchlist_reason": watchlist_reason,
             "vehicle_anomaly_reason": vehicle_reason,
             "bridge_score": bridge_score_normalized,
+            "shared_organization_score": shared_org_scores.get(node, 0.0),
         }
 
     # Percentile rank needs the full score distribution -- computed after

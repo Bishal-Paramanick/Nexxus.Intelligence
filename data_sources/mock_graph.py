@@ -90,6 +90,34 @@ def build_mock_graph() -> nx.MultiDiGraph:
     G.add_edge("RKumar", "Priya", key="dup_present2", edge_type="PRESENT_AT",
                location="Sealdah Station", timestamp="2026-08-09T09:30:00", source_doc="CASE006-FIR-1")
 
+
+        # --- Organization hub: shell-firm story -- 3 suspects tied to the
+    # same resolved shell company, testing that Louvain groups them
+    # together instead of only clustering on direct Person-Person links ---
+    G.add_node("ShellCorp", type="Organization", case_ids=[])
+    for name in ["Deepak", "Anil", "Manoj"]:
+        G.add_node(name, type="Person", case_ids=["CASE005"])
+        G.add_edge(name, "ShellCorp", key=f"member_{name}", edge_type="MEMBER_OF",
+                   timestamp="2026-08-05T10:00:00", source_doc="MCA-2201")
+    G.add_edge("Deepak", "ShellCorp", key="txn_deepak", edge_type="TRANSACTED_WITH",
+               amount=200000, timestamp="2026-08-06T10:00:00", source_doc="FIN-778")
+    # --- Entity-resolution test case: "Rahul Kumar" and "R. Kumar" are the
+# SAME real person -- connected to FRESH entities only, so this test
+# doesn't accidentally overlap with the unrelated "Rahul" node above ---
+    G.add_node("RahulKumar", type="Person", name="Rahul Kumar", case_ids=["CASE006"])
+    G.add_node("RKumar", type="Person", name="R. Kumar", case_ids=["CASE006"])
+    G.add_node("Faizal", type="Person", case_ids=["CASE006"])   # naya, fresh contact
+
+    G.add_edge("RahulKumar", "Faizal", key="dup_call1", edge_type="CALLED",
+           duration_sec=90, timestamp="2026-08-07T09:00:00", source_doc="CDR-0201")
+    G.add_edge("RKumar", "Faizal", key="dup_call2", edge_type="CALLED",
+           duration_sec=110, timestamp="2026-08-07T15:00:00", source_doc="CDR-0201")
+
+    G.add_edge("RahulKumar", "Vikram", key="dup_txn1", edge_type="TRANSACTED_WITH",
+           amount=20000, timestamp="2026-08-08T10:00:00", source_doc="FIN-501")
+    G.add_edge("RKumar", "Vikram", key="dup_txn2", edge_type="TRANSACTED_WITH",
+           amount=20000, timestamp="2026-08-08T16:00:00", source_doc="FIN-501")
+
     return G
 
 
