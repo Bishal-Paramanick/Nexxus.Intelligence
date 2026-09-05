@@ -8,6 +8,12 @@ The graph deliberately contains:
   - a high-betweenness "bridge" node (Rahul) connecting two otherwise separate clusters
   - a burst-calling pattern (Rahul <-> Priya, many calls in one day)
   - a small community (Vikram, Neha, Sanjay) isolated from the main cluster
+  - an organization hub (ShellCorp): 3 suspects (Deepak, Anil, Manoj) tied
+    to the same resolved shell company
+  - an entity-resolution case: "Rahul Kumar" and "R. Kumar" are the SAME
+    real person, extracted twice under slightly different names -- linked
+    ONLY to fresh entities (Faizal, and Vikram from the isolated cluster)
+    so this test never overlaps with the unrelated "Rahul" node above
 
 Swap this module out for a Neo4j-backed loader once Person 2's graph DB is ready --
 everything downstream (analytics.py, risk_engine.py) only needs a networkx.DiGraph,
@@ -68,30 +74,8 @@ def build_mock_graph() -> nx.MultiDiGraph:
                amount=15000, timestamp="2026-08-04T12:00:00", source_doc="CDR-0102")
     G.add_edge("Sanjay", "Vikram", key="c3", edge_type="ASSOCIATED_WITH",
                timestamp="2026-08-04T13:00:00", source_doc="CDR-0102")
-        # --- Entity-resolution test case: "Rahul Kumar" and "R. Kumar" are
-    # the SAME real person, extracted twice under slightly different
-    # names -- should get flagged as a possible duplicate, with high
-    # behavior overlap (same callers/transactions) backing it up. ---
-    G.add_node("RahulKumar", type="Person", name="Rahul Kumar", case_ids=["CASE006"])
-    G.add_node("RKumar", type="Person", name="R. Kumar", case_ids=["CASE006"])
 
-    G.add_edge("RahulKumar", "Amit", key="dup_call1", edge_type="CALLED",
-               duration_sec=90, timestamp="2026-08-07T09:00:00", source_doc="CDR-0201")
-    G.add_edge("RKumar", "Amit", key="dup_call2", edge_type="CALLED",
-               duration_sec=110, timestamp="2026-08-07T15:00:00", source_doc="CDR-0201")
-
-    G.add_edge("RahulKumar", "Suresh", key="dup_txn1", edge_type="TRANSACTED_WITH",
-               amount=20000, timestamp="2026-08-08T10:00:00", source_doc="FIN-501")
-    G.add_edge("RKumar", "Suresh", key="dup_txn2", edge_type="TRANSACTED_WITH",
-               amount=20000, timestamp="2026-08-08T16:00:00", source_doc="FIN-501")
-
-    G.add_edge("RahulKumar", "Priya", key="dup_present1", edge_type="PRESENT_AT",
-               location="Sealdah Station", timestamp="2026-08-09T09:00:00", source_doc="CASE006-FIR-1")
-    G.add_edge("RKumar", "Priya", key="dup_present2", edge_type="PRESENT_AT",
-               location="Sealdah Station", timestamp="2026-08-09T09:30:00", source_doc="CASE006-FIR-1")
-
-
-        # --- Organization hub: shell-firm story -- 3 suspects tied to the
+    # --- Organization hub: shell-firm story -- 3 suspects tied to the
     # same resolved shell company, testing that Louvain groups them
     # together instead of only clustering on direct Person-Person links ---
     G.add_node("ShellCorp", type="Organization", case_ids=[])
@@ -101,22 +85,24 @@ def build_mock_graph() -> nx.MultiDiGraph:
                    timestamp="2026-08-05T10:00:00", source_doc="MCA-2201")
     G.add_edge("Deepak", "ShellCorp", key="txn_deepak", edge_type="TRANSACTED_WITH",
                amount=200000, timestamp="2026-08-06T10:00:00", source_doc="FIN-778")
+
     # --- Entity-resolution test case: "Rahul Kumar" and "R. Kumar" are the
-# SAME real person -- connected to FRESH entities only, so this test
-# doesn't accidentally overlap with the unrelated "Rahul" node above ---
+    # SAME real person -- connected ONLY to fresh entities (Faizal, and
+    # Vikram from the unrelated isolated cluster) so this never overlaps
+    # with the unrelated "Rahul" node's own connections (Suresh/Priya/Amit) ---
     G.add_node("RahulKumar", type="Person", name="Rahul Kumar", case_ids=["CASE006"])
     G.add_node("RKumar", type="Person", name="R. Kumar", case_ids=["CASE006"])
-    G.add_node("Faizal", type="Person", case_ids=["CASE006"])   # naya, fresh contact
+    G.add_node("Faizal", type="Person", case_ids=["CASE006"])
 
     G.add_edge("RahulKumar", "Faizal", key="dup_call1", edge_type="CALLED",
-           duration_sec=90, timestamp="2026-08-07T09:00:00", source_doc="CDR-0201")
+               duration_sec=90, timestamp="2026-08-07T09:00:00", source_doc="CDR-0201")
     G.add_edge("RKumar", "Faizal", key="dup_call2", edge_type="CALLED",
-           duration_sec=110, timestamp="2026-08-07T15:00:00", source_doc="CDR-0201")
+               duration_sec=110, timestamp="2026-08-07T15:00:00", source_doc="CDR-0201")
 
     G.add_edge("RahulKumar", "Vikram", key="dup_txn1", edge_type="TRANSACTED_WITH",
-           amount=20000, timestamp="2026-08-08T10:00:00", source_doc="FIN-501")
+               amount=20000, timestamp="2026-08-08T10:00:00", source_doc="FIN-501")
     G.add_edge("RKumar", "Vikram", key="dup_txn2", edge_type="TRANSACTED_WITH",
-           amount=20000, timestamp="2026-08-08T16:00:00", source_doc="FIN-501")
+               amount=20000, timestamp="2026-08-08T16:00:00", source_doc="FIN-501")
 
     return G
 
