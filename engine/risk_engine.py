@@ -31,7 +31,7 @@ from .analytics import (
 )
 from .watchlist import check_watchlist, WATCHLIST_BOOST
 
-VEHICLE_ANOMALY_MAX_BOOST = 25
+VEHICLE_ANOMALY_MAX_BOOST = 15
 
 VEHICLE_LINK_TYPES = {"OWNS_VEHICLE", "DRIVES"}
 
