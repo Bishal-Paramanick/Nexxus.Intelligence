@@ -14,7 +14,7 @@ FIR_PATTERN or the collection logic here -- everything downstream
 import re
 from collections import defaultdict
 
-FIR_PATTERN = re.compile(r"^fir", re.IGNORECASE)  # matches "FIR_102", "fir_101", "CASE001-FIR-3", etc.
+FIR_PATTERN = re.compile(r"fir", re.IGNORECASE)  # matches "FIR_102", "fir_101", "CASE001-FIR-3", etc.
 
 
 def derive_case_ids(G) -> None:

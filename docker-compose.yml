@@ -10,7 +10,7 @@ services:
       - "7474:7474"  # Neo4j Browser
       - "7687:7687"  # Bolt (used by neo4j_loader.py)
     environment:
-      - NEO4J_AUTH=neo4j/password
+      - NEO4J_AUTH=passwordisneo4j
     volumes:
       - neo4j_data:/data
 

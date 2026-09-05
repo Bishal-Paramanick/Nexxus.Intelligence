@@ -31,6 +31,25 @@ from .analytics import (
 )
 from .watchlist import check_watchlist, WATCHLIST_BOOST
 
+VEHICLE_ANOMALY_MAX_BOOST = 25
+
+def _check_vehicle_anomaly(G, node):
+    """Checks OWNS_VEHICLE edges from `node` to a Vehicle node flagged
+    is_cloned_suspicious == True. Bonus is scaled by the edge's confidence
+    -- stronger evidence (e.g. RTO record) gets closer to the full boost,
+    weaker evidence (e.g. eyewitness mention) gets less."""
+    for _, target, data in G.edges(node, data=True):
+        if data.get("edge_type") != "OWNS_VEHICLE":
+            continue
+        target_data = G.nodes.get(target, {})
+        if target_data.get("is_cloned_suspicious") is True:
+            confidence = data.get("confidence", 1.0)
+            bonus = round(VEHICLE_ANOMALY_MAX_BOOST * confidence, 1)
+            reg = target_data.get("registration_number", target)
+            reason = f"Owns vehicle {reg} flagged as cloned/counterfeit registration (confidence: {confidence})"
+            return reason, bonus
+    return None, 0.0
+
 WEIGHTS = {
     "degree_centrality": 0.05,
     "pagerank_score": 0.05,
@@ -157,8 +176,9 @@ def compute_risk_breakdown(G) -> dict:
         node_name = G.nodes[node].get("name")
         watchlist_reason = check_watchlist(node, node_name)
         watchlist_bonus = WATCHLIST_BOOST if watchlist_reason else 0
-
-        overall_risk_score = round(min(base_overall + watchlist_bonus, 100.0), 1)
+        vehicle_reason, vehicle_bonus = _check_vehicle_anomaly(G, node)
+        overall_risk_score = round(min(base_overall + watchlist_bonus + vehicle_bonus, 100.0), 1)
+        
 
         bridge_score_normalized = _normalize_to_100(bridge_scores.get(node, 0.0), max_bridge_score)
 
@@ -179,6 +199,8 @@ def compute_risk_breakdown(G) -> dict:
             tags.append("High Communication Volume")
         if watchlist_reason:
             tags.append("Watchlisted")
+        if vehicle_reason:
+            tags.append("Vehicle Flagged")
 
         distinct_neighbors = set(G.predecessors(node)) | set(G.successors(node))
 
@@ -189,6 +211,7 @@ def compute_risk_breakdown(G) -> dict:
             "direct_connections_count": len(distinct_neighbors),
             "recency_multiplier": recency,
             "watchlist_reason": watchlist_reason,
+            "vehicle_anomaly_reason": vehicle_reason,
             "bridge_score": bridge_score_normalized,
         }
 

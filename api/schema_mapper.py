@@ -161,5 +161,6 @@ def build_entity_detail(G, entity_id: str) -> EntityDetailResponse | None:
             "bridge_score": risk["bridge_score"],
             "evidence": [e.model_dump() for e in evidence],
             "explanation_path": explanation,
+            "vehicle_anomaly_reason": risk["vehicle_anomaly_reason"],
         },
     )

@@ -88,7 +88,9 @@ for caller, receiver, ts, duration, doc in calls:
     })
 
 data = {"entities": entities, "relationships": relationships}
-with open("/home/claude/person3-graph-analytics/data/ground_truth_case.json", "w") as f:
+from pathlib import Path
+out = Path(__file__).resolve().parent / "ground_truth_case.json"
+with open(out, "w") as f:
     json.dump(data, f, indent=2)
 
 print(f"Entities: {len(entities)}, Relationships: {len(relationships)}")
