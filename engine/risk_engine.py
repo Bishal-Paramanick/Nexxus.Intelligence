@@ -33,20 +33,27 @@ from .watchlist import check_watchlist, WATCHLIST_BOOST
 
 VEHICLE_ANOMALY_MAX_BOOST = 25
 
+VEHICLE_LINK_TYPES = {"OWNS_VEHICLE", "DRIVES"}
+
 def _check_vehicle_anomaly(G, node):
-    """Checks OWNS_VEHICLE edges from `node` to a Vehicle node flagged
-    is_cloned_suspicious == True. Bonus is scaled by the edge's confidence
-    -- stronger evidence (e.g. RTO record) gets closer to the full boost,
-    weaker evidence (e.g. eyewitness mention) gets less."""
+    """Checks OWNS_VEHICLE or DRIVES edges from `node` to a Vehicle node
+    flagged is_cloned_suspicious == True. Ownership and driving are both
+    checked -- a suspect who drives a cloned-plate vehicle without
+    owning it shouldn't slip past this check. Bonus is still scaled by
+    the edge's confidence, so weaker evidence (e.g. an eyewitness saying
+    someone was seen driving it) contributes less than a hard ownership
+    record."""
     for _, target, data in G.edges(node, data=True):
-        if data.get("edge_type") != "OWNS_VEHICLE":
+        edge_type = data.get("edge_type")
+        if edge_type not in VEHICLE_LINK_TYPES:
             continue
         target_data = G.nodes.get(target, {})
         if target_data.get("is_cloned_suspicious") is True:
             confidence = data.get("confidence", 1.0)
             bonus = round(VEHICLE_ANOMALY_MAX_BOOST * confidence, 1)
             reg = target_data.get("registration_number", target)
-            reason = f"Owns vehicle {reg} flagged as cloned/counterfeit registration (confidence: {confidence})"
+            verb = "Owns" if edge_type == "OWNS_VEHICLE" else "Drives"
+            reason = f"{verb} vehicle {reg} flagged as cloned/counterfeit registration (confidence: {confidence})"
             return reason, bonus
     return None, 0.0
 

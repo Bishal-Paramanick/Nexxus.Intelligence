@@ -68,6 +68,27 @@ def build_mock_graph() -> nx.MultiDiGraph:
                amount=15000, timestamp="2026-08-04T12:00:00", source_doc="CDR-0102")
     G.add_edge("Sanjay", "Vikram", key="c3", edge_type="ASSOCIATED_WITH",
                timestamp="2026-08-04T13:00:00", source_doc="CDR-0102")
+        # --- Entity-resolution test case: "Rahul Kumar" and "R. Kumar" are
+    # the SAME real person, extracted twice under slightly different
+    # names -- should get flagged as a possible duplicate, with high
+    # behavior overlap (same callers/transactions) backing it up. ---
+    G.add_node("RahulKumar", type="Person", name="Rahul Kumar", case_ids=["CASE006"])
+    G.add_node("RKumar", type="Person", name="R. Kumar", case_ids=["CASE006"])
+
+    G.add_edge("RahulKumar", "Amit", key="dup_call1", edge_type="CALLED",
+               duration_sec=90, timestamp="2026-08-07T09:00:00", source_doc="CDR-0201")
+    G.add_edge("RKumar", "Amit", key="dup_call2", edge_type="CALLED",
+               duration_sec=110, timestamp="2026-08-07T15:00:00", source_doc="CDR-0201")
+
+    G.add_edge("RahulKumar", "Suresh", key="dup_txn1", edge_type="TRANSACTED_WITH",
+               amount=20000, timestamp="2026-08-08T10:00:00", source_doc="FIN-501")
+    G.add_edge("RKumar", "Suresh", key="dup_txn2", edge_type="TRANSACTED_WITH",
+               amount=20000, timestamp="2026-08-08T16:00:00", source_doc="FIN-501")
+
+    G.add_edge("RahulKumar", "Priya", key="dup_present1", edge_type="PRESENT_AT",
+               location="Sealdah Station", timestamp="2026-08-09T09:00:00", source_doc="CASE006-FIR-1")
+    G.add_edge("RKumar", "Priya", key="dup_present2", edge_type="PRESENT_AT",
+               location="Sealdah Station", timestamp="2026-08-09T09:30:00", source_doc="CASE006-FIR-1")
 
     return G
 

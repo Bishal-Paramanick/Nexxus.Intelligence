@@ -18,7 +18,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 EntityType = Literal["Person", "Phone", "Location", "Vehicle", "Organization"]
-RelationshipType = Literal["CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF", "OWNS_PHONE"]
+RelationshipType = Literal["CALLED", "TRANSACTED_WITH", "PRESENT_AT", "OWNS_VEHICLE", "MEMBER_OF", "OWNS_PHONE","DRIVES"]
 
 
 class NodeProperties(BaseModel):
@@ -98,3 +98,9 @@ class EvidenceItem(BaseModel):
     timestamp: str
     confidence: float = Field(..., ge=0.0, le=1.0)
     verified_by_nlp: bool = True
+
+class DuplicateSuggestion(BaseModel):
+    entity_a: str
+    entity_b: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    signals: dict[str, float]

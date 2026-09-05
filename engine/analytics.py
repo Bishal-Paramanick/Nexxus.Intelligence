@@ -39,12 +39,12 @@ def compute_centrality(G: nx.MultiDiGraph) -> dict:
 
 
 def _collapse_to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
-    """Multiple edges between the same pair (e.g. 18 calls) become one
-    edge with weight = count, so a burst of calls correctly increases
-    that connection's importance in centrality math."""
+    """Collapses a MultiDiGraph to a simple DiGraph, summing parallel edges"""
     simple = nx.DiGraph()
     simple.add_nodes_from(G.nodes(data=True))
     for u, v, data in G.edges(data=True):
+        if data.get("edge_type") == "POSSIBLE_DUPLICATE":
+            continue
         if simple.has_edge(u, v):
             simple[u][v]["weight"] += 1
         else:
@@ -76,16 +76,17 @@ def compute_bridge_score(centrality: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Community detection
 # ---------------------------------------------------------------------------
-
+POSSIBLE_DUPLICATE_WEIGHT = 0.3
 def detect_communities(G: nx.MultiDiGraph) -> dict:
     """Returns {node: community_id}. Louvain needs an undirected simple graph."""
     undirected = nx.Graph()
     undirected.add_nodes_from(G.nodes())
-    for u, v in G.edges():
+    for u, v,data in G.edges(data=True):
+        W = POSSIBLE_DUPLICATE_WEIGHT if data.get("edge_type") == "POSSIBLE_DUPLICATE" else 1
         if undirected.has_edge(u, v):
-            undirected[u][v]["weight"] += 1
+            undirected[u][v]["weight"] += W
         else:
-            undirected.add_edge(u, v, weight=1)
+            undirected.add_edge(u, v, weight=W)
 
     communities = nx.algorithms.community.louvain_communities(undirected, weight="weight", seed=42)
 

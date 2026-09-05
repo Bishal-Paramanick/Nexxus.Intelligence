@@ -13,6 +13,7 @@ analytics.py or risk_engine.py directly.
 
 import warnings
 
+
 from ..contracts.schemas import (
     GraphNode, GraphEdge, GraphResponse, NodeProperties, EdgeProperties,
     RiskBreakdown, EntityDetailResponse,
@@ -126,7 +127,7 @@ def build_graph_response(G) -> GraphResponse:
 
     return GraphResponse(nodes=nodes, edges=edges)
 
-
+from ..engine.entity_resolution import detect_possible_duplicates
 def build_entity_detail(G, entity_id: str) -> EntityDetailResponse | None:
     """For the /api/entity/{id} style endpoint."""
     if entity_id not in G.nodes:
@@ -143,6 +144,12 @@ def build_entity_detail(G, entity_id: str) -> EntityDetailResponse | None:
 
     evidence = get_entity_evidence(G, entity_id)
     explanation = get_explanation_path(G, entity_id)
+
+    duplicate_suggestions = [
+        s for s in detect_possible_duplicates(G)
+        if entity_id in (s["entity_a"], s["entity_b"])
+    ]
+
 
     return EntityDetailResponse(
         id=entity_id,
@@ -162,5 +169,6 @@ def build_entity_detail(G, entity_id: str) -> EntityDetailResponse | None:
             "evidence": [e.model_dump() for e in evidence],
             "explanation_path": explanation,
             "vehicle_anomaly_reason": risk["vehicle_anomaly_reason"],
+            "duplicate_suggestions": duplicate_suggestions,
         },
     )
