@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Scale, 
@@ -12,9 +12,14 @@ import {
   Sparkles,
   Fingerprint,
   TrendingUp,
-  ShieldCheck
+  ShieldCheck,
+  MapPin,
+  GitFork,
+  RefreshCw,
+  Search
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { apiService } from '../services/api';
 
 export default function EvidenceDrawer({
   selectedNode,
@@ -22,9 +27,43 @@ export default function EvidenceDrawer({
   onFocusNode,
   onTraceKingpin,
   onOpenFirDoc,
+  onExpandSubgraph,
   allEdges = []
 }) {
   const [activeTab, setActiveTab] = useState('profile');
+  const [liveNeighbors, setLiveNeighbors] = useState([]);
+  const [sharedLocations, setSharedLocations] = useState([]);
+  const [subgraphDepth, setSubgraphDepth] = useState(2);
+  const [loadingNeighbors, setLoadingNeighbors] = useState(false);
+  const [loadingShared, setLoadingShared] = useState(false);
+  const [selectedEdgeEvidence, setSelectedEdgeEvidence] = useState(null);
+
+  useEffect(() => {
+    if (!selectedNode) return;
+
+    // Fetch 1-hop direct neighbors from API
+    const fetchNeighbors = async () => {
+      setLoadingNeighbors(true);
+      const res = await apiService.getEntityNeighbors(selectedNode.id);
+      if (Array.isArray(res)) {
+        setLiveNeighbors(res);
+      }
+      setLoadingNeighbors(false);
+    };
+
+    // Fetch shared locations from API
+    const fetchShared = async () => {
+      setLoadingShared(true);
+      const res = await apiService.getSharedLocations(selectedNode.id);
+      if (Array.isArray(res)) {
+        setSharedLocations(res);
+      }
+      setLoadingShared(false);
+    };
+
+    fetchNeighbors();
+    fetchShared();
+  }, [selectedNode]);
 
   if (!selectedNode) return null;
 
@@ -48,13 +87,27 @@ export default function EvidenceDrawer({
     alert(`Court-Certified Evidence Dossier generated for [${selectedNode.name}] under BSA 2023 / Sec 65B.`);
   };
 
+  // Inspect Live Evidence between two nodes
+  const handleInspectEvidence = async (otherId) => {
+    const ev = await apiService.getEvidence(selectedNode.id, otherId);
+    setSelectedEdgeEvidence(ev);
+  };
+
+  // Expand Subgraph via API
+  const handleTriggerSubgraph = async () => {
+    const sub = await apiService.getEntitySubgraph(selectedNode.id, subgraphDepth);
+    if (onExpandSubgraph) {
+      onExpandSubgraph(sub);
+    }
+  };
+
   // SVG Circular Gauge calculations
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - ((selectedNode.risk_score || 0) / 100) * circumference;
 
   return (
-    <aside className="fixed top-0 right-0 h-full w-full sm:w-[460px] bg-[#0a0e1a]/95 backdrop-blur-2xl border-l border-white/[0.08] shadow-2xl z-50 flex flex-col transition-all animate-fade-in">
+    <aside className="fixed top-0 right-0 h-full w-full sm:w-[480px] bg-[#0a0e1a]/95 backdrop-blur-2xl border-l border-white/[0.08] shadow-2xl z-50 flex flex-col transition-all animate-fade-in">
       {/* Drawer Header */}
       <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -86,17 +139,18 @@ export default function EvidenceDrawer({
       </div>
 
       {/* Modern Tabs */}
-      <div className="flex border-b border-white/[0.08] px-4 text-xs">
+      <div className="flex border-b border-white/[0.08] px-4 text-xs overflow-x-auto scrollbar-none">
         {[
           { id: 'profile', label: 'Overview' },
+          { id: 'neighbors', label: `1-Hop Neighbors (${liveNeighbors.length || connectedEdges.length})` },
+          { id: 'shared', label: 'Co-Location' },
           { id: 'evidence', label: 'FIR Evidence' },
           { id: 'factors', label: 'Risk Metrics' },
-          { id: 'links', label: `Links (${connectedEdges.length})` },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`py-2.5 px-3 font-medium transition-all border-b-2 ${
+            className={`py-2.5 px-3 font-medium transition-all border-b-2 whitespace-nowrap ${
               activeTab === t.id
                 ? 'text-cyan-300 border-cyan-400 font-semibold'
                 : 'text-slate-400 border-transparent hover:text-slate-200'
@@ -109,7 +163,7 @@ export default function EvidenceDrawer({
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* OVERVIEW TAB */}
+        {/* 1. OVERVIEW TAB */}
         {activeTab === 'profile' && (
           <div className="space-y-4">
             {/* Suspect Master Profile Card */}
@@ -123,7 +177,7 @@ export default function EvidenceDrawer({
                     {selectedNode.name}
                   </h3>
                   <span className="text-xs text-cyan-400 font-mono">
-                    {selectedNode.id}
+                    ID: {selectedNode.id}
                   </span>
                 </div>
 
@@ -171,7 +225,7 @@ export default function EvidenceDrawer({
               )}
 
               <p className="text-xs text-slate-300 leading-relaxed bg-black/30 p-3 rounded-xl border border-white/[0.04]">
-                {selectedNode.summary}
+                {selectedNode.summary || `Intelligence record registered in Neo4j database under ${selectedNode.type}.`}
               </p>
             </div>
 
@@ -184,9 +238,9 @@ export default function EvidenceDrawer({
                 </span>
               </div>
               <div className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl">
-                <span className="text-[10px] text-slate-500 block">NETWORK DEGREE</span>
+                <span className="text-[10px] text-slate-500 block">DIRECT CONNECTIONS</span>
                 <span className="text-indigo-300 font-bold text-sm">
-                  {connectedEdges.length} Connections
+                  {liveNeighbors.length || connectedEdges.length} 1-Hop
                 </span>
               </div>
               {selectedNode.phone && (
@@ -225,7 +279,7 @@ export default function EvidenceDrawer({
                   className="w-full py-2.5 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-200 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all"
                 >
                   <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span>Trace Path to Kingpin (Debasish)</span>
+                  <span>Trace Shortest Path to Kingpin (Debasish)</span>
                 </button>
               )}
 
@@ -240,7 +294,165 @@ export default function EvidenceDrawer({
           </div>
         )}
 
-        {/* EVIDENCE TAB */}
+        {/* 2. 1-HOP NEIGHBORS TAB (Direct Neo4j /api/entity/{id}/neighbors) */}
+        {activeTab === 'neighbors' && (
+          <div className="space-y-3">
+            {/* Multi-Hop Subgraph Depth Controller */}
+            <div className="bg-black/30 border border-white/[0.08] p-3 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <GitFork className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Multi-Hop Subgraph Depth</span>
+                </span>
+                <span className="text-cyan-300 font-bold">{subgraphDepth} Hops</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="1"
+                  max="4"
+                  value={subgraphDepth}
+                  onChange={(e) => setSubgraphDepth(Number(e.target.value))}
+                  className="flex-1 accent-cyan-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                />
+                <button
+                  onClick={handleTriggerSubgraph}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[11px] font-mono border border-cyan-500/30 transition-colors"
+                >
+                  Expand
+                </button>
+              </div>
+            </div>
+
+            {loadingNeighbors ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-cyan-400 mb-2" />
+                Querying 1-hop connections from Neo4j...
+              </div>
+            ) : liveNeighbors.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-xs">
+                No direct connections recorded for this entity.
+              </div>
+            ) : (
+              liveNeighbors.map((item, idx) => {
+                const targetEntity = item.entity || {};
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white/[0.02] border border-white/[0.06] hover:border-cyan-500/40 p-3 rounded-xl text-xs space-y-1.5 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-cyan-300 font-semibold text-[11px]">
+                        {item.relationship}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-slate-400">
+                        {item.entity_type || 'Entity'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-white text-xs">
+                        {targetEntity.name || targetEntity.id}
+                      </h4>
+                      {targetEntity.id && (
+                        <button
+                          onClick={() => handleInspectEvidence(targetEntity.id)}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-mono"
+                        >
+                          Evidence
+                        </button>
+                      )}
+                    </div>
+
+                    {item.details?.evidence && (
+                      <p className="text-slate-400 text-[11px] bg-black/20 p-2 rounded-lg border border-white/[0.04]">
+                        {item.details.evidence}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+
+            {/* Edge Evidence Modal / Banner */}
+            {selectedEdgeEvidence && (
+              <div className="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-3 text-xs space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Relationship Provenance (BSA §65B)</span>
+                  </span>
+                  <button onClick={() => setSelectedEdgeEvidence(null)} className="text-slate-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {selectedEdgeEvidence.map((ev, i) => (
+                  <div key={i} className="text-[11px] text-slate-300 font-mono">
+                    <div>Source Doc: <span className="text-cyan-300">{ev.source_doc}</span></div>
+                    <div>Confidence: <span className="text-emerald-400">{Math.round(ev.confidence * 100)}%</span></div>
+                    <div>Timestamp: <span className="text-slate-400">{ev.timestamp}</span></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. SHARED LOCATIONS / CO-OCCURRENCE (Direct Neo4j /api/entity/{id}/shared-locations) */}
+        {activeTab === 'shared' && (
+          <div className="space-y-3">
+            <div className="bg-cyan-950/30 border border-cyan-500/30 p-3 rounded-xl flex items-start space-x-2 text-xs text-cyan-200">
+              <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold block">Geospatial Co-Presence Analysis</span>
+                <span className="text-slate-400 text-[11px]">
+                  Suspects co-located at identical coordinates or premises based on CDR cell-tower triangulations and physical surveillance.
+                </span>
+              </div>
+            </div>
+
+            {loadingShared ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-cyan-400 mb-2" />
+                Querying co-presence records from Neo4j...
+              </div>
+            ) : sharedLocations.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-xs">
+                No shared location records identified for this suspect.
+              </div>
+            ) : (
+              sharedLocations.map((loc, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3.5 space-y-2"
+                >
+                  <div className="flex items-center space-x-2 text-xs font-bold text-white">
+                    <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>{loc.location}</span>
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase block">
+                      Co-Located Suspects:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(loc.co_located_persons || []).map((p, pIdx) => (
+                        <span
+                          key={pIdx}
+                          className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-cyan-300 font-mono"
+                        >
+                          {p.name || p.id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* 4. FIR EVIDENCE TAB */}
         {activeTab === 'evidence' && (
           <div className="space-y-3">
             <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl flex items-start space-x-2.5 text-xs">
@@ -285,7 +497,7 @@ export default function EvidenceDrawer({
           </div>
         )}
 
-        {/* RISK FACTORS TAB */}
+        {/* 5. RISK METRICS TAB */}
         {activeTab === 'factors' && (
           <div className="space-y-4">
             <div className="space-y-3">
@@ -319,40 +531,6 @@ export default function EvidenceDrawer({
                 {selectedNode.risk_score}/100
               </span>
             </div>
-          </div>
-        )}
-
-        {/* LINKS TAB */}
-        {activeTab === 'links' && (
-          <div className="space-y-2">
-            {connectedEdges.map((edge) => (
-              <div
-                key={edge.id}
-                className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl text-xs space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-cyan-300 font-semibold">
-                    {edge.type}
-                  </span>
-                  {edge.amount && (
-                    <span className="font-mono text-amber-300 font-bold">
-                      ₹{(edge.amount).toLocaleString('en-IN')}
-                    </span>
-                  )}
-                  {edge.frequency && (
-                    <span className="font-mono text-rose-300 font-bold">
-                      {edge.frequency} Calls
-                    </span>
-                  )}
-                </div>
-                <p className="text-slate-300 text-xs">
-                  Connected to: <strong>{edge.source === selectedNode.id ? edge.target_name : edge.source_name}</strong>
-                </p>
-                <p className="text-slate-500 text-[10px] line-clamp-2">
-                  {edge.evidence}
-                </p>
-              </div>
-            ))}
           </div>
         )}
       </div>

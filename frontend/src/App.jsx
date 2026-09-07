@@ -8,17 +8,21 @@ import FinancialFlowView from './components/FinancialFlowView';
 import CdrTelemetryView from './components/CdrTelemetryView';
 import FirCorpusView from './components/FirCorpusView';
 import LegalAuditVault from './components/LegalAuditVault';
+import EntityResolutionView from './components/EntityResolutionView';
+import IngestModal from './components/IngestModal';
 import { apiService } from './services/api';
 import { MOCK_GRAPH_DATA, AGENT_QUERY_PRESETS } from './data/mockIntelligenceData';
 
 export default function App() {
-  // Navigation View Tab: 'graph' | 'agent' | 'financial' | 'cdr' | 'fir' | 'audit'
+  // Navigation View Tab: 'graph' | 'agent' | 'resolution' | 'financial' | 'cdr' | 'fir' | 'audit'
   const [activeTab, setActiveTab] = useState('graph');
 
   // Core Data
   const [rawGraphData, setRawGraphData] = useState(MOCK_GRAPH_DATA);
   const [backendStatus, setBackendStatus] = useState({ isLive: false, source: 'AUTONOMOUS_DATASET' });
+  const [graphStats, setGraphStats] = useState({ total_nodes: 16, total_relationships: 28 });
   const [loading, setLoading] = useState(false);
+  const [showIngestModal, setShowIngestModal] = useState(false);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,13 +48,18 @@ export default function App() {
     setLoading(true);
     const health = await apiService.checkHealth();
     const result = await apiService.getGraph();
-    
+    const stats = await apiService.getStats();
+
     if (result?.data) {
       setRawGraphData(result.data);
       setBackendStatus({
         isLive: health.isLive || result.source === 'LIVE_FASTAPI',
         source: result.source
       });
+    }
+
+    if (stats?.data) {
+      setGraphStats(stats.data);
     }
     setLoading(false);
   }, []);
@@ -97,8 +106,8 @@ export default function App() {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
         (n) =>
-          n.name.toLowerCase().includes(q) ||
-          n.id.toLowerCase().includes(q) ||
+          n.name?.toLowerCase().includes(q) ||
+          n.id?.toLowerCase().includes(q) ||
           (n.role && n.role.toLowerCase().includes(q)) ||
           (n.phone && n.phone.includes(q)) ||
           (n.account && n.account.includes(q)) ||
@@ -150,31 +159,42 @@ export default function App() {
     setLoadingQuery(false);
   };
 
-  // Trace Shortest Path to Mastermind Kingpin (Debasish Chatterjee P008)
-  const handleTraceKingpin = (startNode) => {
+  // Dynamic Shortest Path to Mastermind Kingpin (Debasish Chatterjee P008) via Neo4j API
+  const handleTraceKingpin = async (startNode) => {
     if (!startNode) return;
     const kingpinId = 'P008';
 
-    // Simple BFS / Path highlighter
-    const targetEdges = [];
-    const targetNodes = [startNode.id, kingpinId];
-
-    if (startNode.cluster_id === 'cluster_a') {
-      // Path: startNode -> Sunita Roy (P007) -> Debasish (P008)
-      targetNodes.push('P007', 'PH005', 'PH009');
-      targetEdges.push('e_call_06', 'e_tx_cut_03', 'e_has_ph_01', 'e_has_ph_04');
-    } else if (startNode.cluster_id === 'cluster_b') {
-      // Path: startNode -> Ashok Mehta (P010) -> Debasish (P008)
-      targetNodes.push('P010', 'PH007', 'PH009', 'VEH003');
-      targetEdges.push('e_call_07', 'e_veh_03', 'e_veh_04', 'e_has_ph_01');
-    } else {
-      // Victim -> Rajesh -> Sunita -> Debasish
-      targetNodes.push('P003', 'P007', 'PH002', 'PH005', 'PH009');
-      targetEdges.push('e_spike_01', 'e_call_03', 'e_call_06');
+    if (startNode.id === kingpinId) {
+      setHighlightedNodeIds([kingpinId]);
+      setActiveTab('graph');
+      return;
     }
 
-    setHighlightedNodeIds(targetNodes);
-    setHighlightedEdgeIds(targetEdges);
+    // Hit Neo4j shortest path endpoint
+    const pathResult = await apiService.getShortestPath(startNode.id, kingpinId);
+
+    if (pathResult && pathResult.nodes && pathResult.nodes.length > 0) {
+      const nodeIds = pathResult.nodes.map((n) => n.id);
+      const edgeIds = (pathResult.edges || []).map((e) => e.id);
+      setHighlightedNodeIds(nodeIds);
+      setHighlightedEdgeIds(edgeIds);
+    } else {
+      // Fallback highlighting
+      setHighlightedNodeIds([startNode.id, kingpinId]);
+    }
+
+    setActiveTab('graph');
+  };
+
+  // Subgraph expansion handler
+  const handleExpandSubgraph = (subgraph) => {
+    if (!subgraph) return;
+    if (Array.isArray(subgraph.nodes)) {
+      setHighlightedNodeIds(subgraph.nodes.map((n) => n.id));
+    }
+    if (Array.isArray(subgraph.edges)) {
+      setHighlightedEdgeIds(subgraph.edges.map((e) => e.id));
+    }
     setActiveTab('graph');
   };
 
@@ -203,8 +223,10 @@ export default function App() {
       } else if (e.key === '2' && e.altKey) {
         setActiveTab('agent');
       } else if (e.key === '3' && e.altKey) {
-        setActiveTab('financial');
+        setActiveTab('resolution');
       } else if (e.key === '4' && e.altKey) {
+        setActiveTab('financial');
+      } else if (e.key === '5' && e.altKey) {
         setActiveTab('cdr');
       }
     };
@@ -222,9 +244,11 @@ export default function App() {
         refreshData={loadData}
         caseInfo={rawGraphData?.case_info}
         kpiStats={{
-          totalNodes: rawGraphData?.nodes?.length || 0,
-          totalEdges: rawGraphData?.edges?.length || 0,
+          totalNodes: graphStats.total_nodes || rawGraphData?.nodes?.length || 0,
+          totalEdges: graphStats.total_relationships || rawGraphData?.edges?.length || 0,
         }}
+        pendingReviewCount={3}
+        onOpenIngest={() => setShowIngestModal(true)}
       />
 
       {/* 2. Primary Workspace Body */}
@@ -248,6 +272,7 @@ export default function App() {
               setTimelinePlaying={setTimelinePlaying}
               nodeCountsByType={nodeCountsByType}
               resetFilters={resetFilters}
+              onSelectNode={(node) => setSelectedNode(node)}
             />
 
             {/* Force Canvas */}
@@ -298,27 +323,40 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 3: CIRCULAR MONEY TRAIL & AML FLOW */}
-        {activeTab === 'financial' && (
-          <FinancialFlowView onSelectEntity={(nodeId) => {
-            const found = rawGraphData.nodes.find(n => n.id === nodeId);
-            if (found) {
-              setSelectedNode(found);
+        {/* VIEW 3: ENTITY RESOLUTION & DUPLICATE REVIEW QUEUE (SIH26189) */}
+        {activeTab === 'resolution' && (
+          <EntityResolutionView
+            onFocusEntity={(node) => {
+              setSelectedNode(node);
               setActiveTab('graph');
-            }
-          }} />
+            }}
+            onJumpToGraph={() => setActiveTab('graph')}
+          />
         )}
 
-        {/* VIEW 4: CDR TELEMETRY & CALL SPIKE MATRIX */}
+        {/* VIEW 4: CIRCULAR MONEY TRAIL & AML FLOW */}
+        {activeTab === 'financial' && (
+          <FinancialFlowView
+            onSelectEntity={(nodeId) => {
+              const found = rawGraphData.nodes.find((n) => n.id === nodeId);
+              if (found) {
+                setSelectedNode(found);
+                setActiveTab('graph');
+              }
+            }}
+          />
+        )}
+
+        {/* VIEW 5: CDR TELEMETRY & CALL SPIKE MATRIX */}
         {activeTab === 'cdr' && (
           <CdrTelemetryView />
         )}
 
-        {/* VIEW 5: FIR CORPUS & IN-TEXT NER HIGHLIGHTER */}
+        {/* VIEW 6: FIR CORPUS & IN-TEXT NER HIGHLIGHTER */}
         {activeTab === 'fir' && (
           <FirCorpusView
             onSelectEntity={(entityName) => {
-              const found = rawGraphData.nodes.find(n => n.name.includes(entityName));
+              const found = rawGraphData.nodes.find((n) => n.name.includes(entityName));
               if (found) {
                 setSelectedNode(found);
                 setActiveTab('graph');
@@ -328,7 +366,7 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 6: BSA SECTION 65B LEGAL AUDIT VAULT */}
+        {/* VIEW 7: BSA SECTION 65B LEGAL AUDIT VAULT */}
         {activeTab === 'audit' && (
           <LegalAuditVault
             caseInfo={rawGraphData.case_info}
@@ -349,10 +387,18 @@ export default function App() {
             onOpenFirDoc={(docId) => {
               setActiveTab('fir');
             }}
+            onExpandSubgraph={handleExpandSubgraph}
             allEdges={rawGraphData?.edges || []}
           />
         )}
       </main>
+
+      {/* 4. Ingestion Modal */}
+      <IngestModal
+        isOpen={showIngestModal}
+        onClose={() => setShowIngestModal(false)}
+        onIngestSuccess={loadData}
+      />
     </div>
   );
 }

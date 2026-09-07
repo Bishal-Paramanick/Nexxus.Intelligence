@@ -7,10 +7,12 @@ import {
   PhoneCall, 
   FileText, 
   Scale, 
-  RefreshCw,
-  Sparkles,
-  Lock,
-  Radio
+  RefreshCw, 
+  Sparkles, 
+  Lock, 
+  GitMerge,
+  Database,
+  UploadCloud
 } from 'lucide-react';
 
 export default function Header({ 
@@ -19,11 +21,14 @@ export default function Header({
   backendStatus, 
   refreshData, 
   caseInfo, 
-  kpiStats 
+  kpiStats,
+  pendingReviewCount = 3,
+  onOpenIngest
 }) {
   const tabs = [
     { id: 'graph', label: 'Graph Canvas', icon: Network, badge: `${kpiStats.totalNodes}` },
     { id: 'agent', label: 'AI Investigation', icon: Bot, isHighlight: true },
+    { id: 'resolution', label: 'Entity Resolution', icon: GitMerge, badge: pendingReviewCount > 0 ? `${pendingReviewCount}` : null },
     { id: 'financial', label: 'Money Trail', icon: CircleDollarSign },
     { id: 'cdr', label: 'Call Matrix', icon: PhoneCall },
     { id: 'fir', label: 'FIR Corpus', icon: FileText },
@@ -50,10 +55,12 @@ export default function Header({
               </span>
             </div>
             <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-              <span className="text-amber-300 font-mono font-medium">CASE-KOL-2026</span>
+              <span className="text-amber-300 font-mono font-medium">
+                {caseInfo?.id || 'CASE-KOL-2026'}
+              </span>
               <span className="text-slate-600">•</span>
               <span className="text-slate-300 truncate max-w-[240px] xl:max-w-none">
-                Cyber Extortion & Laundering Syndicate
+                {caseInfo?.title || 'Cyber Extortion & Laundering Syndicate'}
               </span>
             </div>
           </div>
@@ -68,7 +75,7 @@ export default function Header({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent'
@@ -82,7 +89,11 @@ export default function Header({
                   </span>
                 )}
                 {tab.badge && (
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-white/[0.06] text-slate-400">
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                    tab.id === 'resolution'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                      : 'bg-white/[0.06] text-slate-400'
+                  }`}>
                     {tab.badge}
                   </span>
                 )}
@@ -92,23 +103,50 @@ export default function Header({
         </nav>
 
         {/* Right: Telemetry & Actions */}
-        <div className="flex items-center space-x-3 shrink-0">
-          {/* Kingpin Isolated Pill */}
-          <div className="hidden xl:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-            <span>Kingpin Isolated (P008)</span>
-          </div>
+        <div className="flex items-center space-x-2.5 shrink-0">
+          {/* Live DB / Backend Connection Indicator */}
+          {backendStatus?.isLive ? (
+            <div
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs font-mono shadow-sm"
+              title="Connected to live nexxus-db Neo4j knowledge graph API"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="hidden sm:inline">Neo4j: CONNECTED</span>
+              <span className="sm:hidden">LIVE</span>
+            </div>
+          ) : (
+            <button
+              onClick={refreshData}
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 text-amber-300 text-xs font-mono transition-colors"
+              title="FastAPI server offline. Click to test live connection."
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span className="hidden sm:inline">DEMO DATASET</span>
+              <span className="sm:hidden">DEMO</span>
+            </button>
+          )}
+
+          {/* Ingest Payload Action */}
+          <button
+            onClick={onOpenIngest}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 text-xs font-mono transition-colors"
+            title="Ingest Abhidha's NLP extraction payload into knowledge graph"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden xl:inline">Ingest NLP</span>
+          </button>
 
           {/* BSA Compliance Badge */}
-          <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+          <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-500/20 text-emerald-300 text-xs font-mono">
             <Lock className="w-3 h-3 text-emerald-400" />
-            <span>BSA Sec 65B</span>
+            <span>BSA §65B</span>
           </div>
 
+          {/* Refresh Action */}
           <button 
             onClick={refreshData} 
             className="p-1.5 text-slate-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors border border-white/[0.08]"
-            title="Refresh Knowledge Graph"
+            title="Refresh Knowledge Graph & Live Stats"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
